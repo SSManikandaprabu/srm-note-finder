@@ -1663,38 +1663,75 @@ export default function App() {
               </h1>
 
               {selectedSubject && (
-                <button
-                  className={`bookmark-btn ${
-                    bookmarks.some(
-                      (b) =>
-                        b.subject === selectedSubject &&
-                        Number(b.semester) === Number(selectedSemester) &&
-                        !b.unit
-                    )
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    handleToggleBookmark({
-                      resourceId: resource?._id || "",
-                      subject: selectedSubject,
-                      semester: Number(selectedSemester),
-                      title: `${selectedSubject} (All Notes)`,
-                    })
-                  }
-                  title="Bookmark this subject to your quick-access dashboard"
-                >
-                  <span>
-                    {bookmarks.some(
-                      (b) =>
-                        b.subject === selectedSubject &&
-                        Number(b.semester) === Number(selectedSemester) &&
-                        !b.unit
-                    )
-                      ? "★ Bookmarked"
-                      : "☆ Bookmark Subject"}
-                  </span>
-                </button>
+                <>
+                  <button
+                    className={`bookmark-btn ${
+                      bookmarks.some(
+                        (b) =>
+                          b.subject === selectedSubject &&
+                          Number(b.semester) === Number(selectedSemester) &&
+                          !b.unit
+                      )
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleToggleBookmark({
+                        resourceId: resource?._id || "",
+                        subject: selectedSubject,
+                        semester: Number(selectedSemester),
+                        title: `${selectedSubject} (All Notes)`,
+                      })
+                    }
+                    title="Bookmark this subject to your quick-access dashboard"
+                  >
+                    <span>
+                      {bookmarks.some(
+                        (b) =>
+                          b.subject === selectedSubject &&
+                          Number(b.semester) === Number(selectedSemester) &&
+                          !b.unit
+                      )
+                        ? "★ Bookmarked"
+                        : "☆ Bookmark Subject"}
+                    </span>
+                  </button>
+
+                  <button
+                    className="share-whatsapp-btn"
+                    onClick={() => {
+                      const shareText = `📚 *${selectedSubject}* - Semester ${selectedSemester} Notes, Question Papers (PYQs), and PPTs are available here for free on SRM Note Finder:\n\n🔗 ${window.location.origin}`;
+                      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+                      window.open(whatsappUrl, "_blank");
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 14px",
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #25D366, #128C7E)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(37, 211, 102, 0.35)",
+                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 6px 18px rgba(37, 211, 102, 0.45)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(37, 211, 102, 0.35)";
+                    }}
+                    title="Share these notes directly to your class WhatsApp group"
+                  >
+                    <span>📲</span> Share to WhatsApp
+                  </button>
+                </>
               )}
             </div>
 
