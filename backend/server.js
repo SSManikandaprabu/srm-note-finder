@@ -71,12 +71,15 @@ app.use(async (req, res, next) => {
   next();
 });
 
+app.set("trust proxy", 1); // Crucial for Vercel / reverse proxies
+
 // Rate limiter for admin login (10 attempts per 15 minutes)
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false, // Prevent express-rate-limit 7+ from throwing ERR_ERL_FORWARDED_HEADER behind proxies
   message: { success: false, message: "Too many login attempts. Please try again after 15 minutes." },
 });
 
@@ -300,9 +303,10 @@ app.get("/api/subjects", (req, res) => {
 
 app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const trimmedUser = (username || "").trim();
+    const trimmedPass = (password || "").trim();
 
-    if (!username || !password) {
+    if (!trimmedUser || !trimmedPass) {
       return res.status(400).json({
         success: false,
         message: "Username and password are required",
@@ -310,8 +314,8 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
     }
 
     if (
-      username === ADMIN_USERNAME &&
-      password === ADMIN_PASSWORD
+      trimmedUser === ADMIN_USERNAME.trim() &&
+      trimmedPass === ADMIN_PASSWORD.trim()
     ) {
       const token = jwt.sign(
         {
