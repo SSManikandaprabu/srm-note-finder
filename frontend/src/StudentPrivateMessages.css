@@ -1,0 +1,230 @@
+
+.student-private-chat {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 22px;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 5% 0%, rgba(34, 211, 238, 0.08), transparent 35%),
+    linear-gradient(145deg, #0f172a, #080d1a);
+  border: 1px solid rgba(103, 232, 249, 0.25);
+  border-radius: 20px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.65), 0 0 30px rgba(34, 211, 238, 0.08);
+  box-sizing: border-box;
+}
+
+.student-private-chat__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.student-private-chat__eyebrow {
+  color: #67e8f9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.student-private-chat__header h2 {
+  margin: 4px 0 2px;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+
+.student-private-chat__header p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.student-private-chat__badge {
+  padding: 5px 10px;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.student-private-chat__history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 320px;
+  max-height: 50vh;
+  margin: 16px 0;
+  padding: 8px 4px;
+  overflow-y: auto;
+}
+
+.student-private-chat__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 220px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.student-private-chat__empty > span {
+  margin-bottom: 10px;
+  font-size: 35px;
+}
+
+.student-private-chat__empty h3 {
+  margin: 0 0 8px;
+  color: #e2e8f0;
+  font-size: 18px;
+}
+
+.student-private-chat__empty p {
+  max-width: 360px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.student-private-chat__message {
+  width: fit-content;
+  max-width: 85%;
+  padding: 10px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+
+.student-private-chat__message.from-admin {
+  align-self: flex-start;
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.2);
+  border-bottom-left-radius: 4px;
+}
+
+.student-private-chat__message.from-student {
+  align-self: flex-end;
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(167, 139, 250, 0.25);
+  border-bottom-right-radius: 4px;
+}
+
+.student-private-chat__message strong {
+  color: #67e8f9;
+  font-size: 11px;
+}
+
+.student-private-chat__message p {
+  margin: 4px 0 6px;
+  color: #f1f5f9;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.student-private-chat__message time {
+  display: block;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+.student-private-chat__composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-private-chat__composer input {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  height: 40px;
+  padding: 8px 14px;
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  outline: none;
+  font: inherit;
+  font-size: 13px;
+}
+
+.student-private-chat__composer input:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.12);
+}
+
+.student-private-chat__composer input::placeholder {
+  color: #64748b;
+}
+
+.student-private-chat__composer button {
+  min-height: 40px;
+  height: 40px;
+  padding: 0 16px;
+  color: #06111e;
+  background: linear-gradient(110deg, #67e8f9, #22d3ee, #a78bfa);
+  border: 0;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.student-private-chat__composer button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.student-private-chat__composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.student-private-chat__error {
+  padding: 12px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.student-private-chat__note {
+  margin: 14px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .student-private-chat {
+    margin: 20px auto;
+    padding: 19px;
+    border-radius: 18px;
+  }
+
+  .student-private-chat__header {
+    align-items: flex-start;
+  }
+
+  .student-private-chat__message {
+    max-width: 92%;
+  }
+
+  .student-private-chat__composer {
+    align-items: stretch;
+  }
+
+  .student-private-chat__composer button {
+    padding: 0 15px;
+  }
+}
