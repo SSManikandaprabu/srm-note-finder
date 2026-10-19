@@ -303,6 +303,7 @@ app.get("/api/subjects", (req, res) => {
 
 app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
   try {
+    const { username, password } = req.body || {};
     const trimmedUser = (username || "").trim();
     const trimmedPass = (password || "").trim();
 
