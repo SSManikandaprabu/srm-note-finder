@@ -2,10 +2,18 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
-// Ensure secure uploads directory exists
-const uploadDir = path.join(__dirname, "..", "uploads", "notes");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure secure uploads directory exists (fallback to /tmp for serverless read-only environments)
+let uploadDir = path.join(__dirname, "..", "uploads", "notes");
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  // Serverless environments like AWS Lambda / Vercel only allow writes to /tmp
+  uploadDir = path.join("/tmp", "uploads", "notes");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 }
 
 // Allowed MIME types and extensions

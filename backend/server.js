@@ -46,6 +46,31 @@ app.use(
 app.use(cors());
 app.use(express.json({ limit: "1mb" })); // Prevent oversized JSON payload DoS
 
+// Middleware to ensure Mongoose is connected for serverless environments
+let isConnected = false;
+async function connectToDatabase() {
+  if (mongoose.connection.readyState === 1) {
+    return;
+  }
+  if (!process.env.MONGODB_URI) {
+    return;
+  }
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      bufferCommands: false,
+    });
+    isConnected = true;
+  } catch (err) {
+    console.error("MongoDB serverless connection error:", err.message);
+  }
+}
+
+app.use(async (req, res, next) => {
+  await connectToDatabase();
+  next();
+});
+
 // Rate limiter for admin login (10 attempts per 15 minutes)
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
