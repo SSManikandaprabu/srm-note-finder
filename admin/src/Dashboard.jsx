@@ -8,6 +8,199 @@ import AnalyticsPage from "./AnalyticsPage";
 const API_BASE =
   (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
+function ResourceForm({ form, onChange, onSubmit, onClose }) {
+  return (
+    <div className="resource-modal-overlay">
+      <div className="resource-modal">
+
+        <div className="resource-modal-header">
+          <div>
+            <span className="panel-kicker">
+              CONTENT MANAGEMENT
+            </span>
+
+            <h2>Add Resource</h2>
+
+            <p>
+              Add Units 1–5 and PYQ links for a subject.
+            </p>
+          </div>
+
+          <button
+            className="modal-close"
+            type="button"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit}>
+
+          <div className="form-grid">
+
+            <div className="admin-field">
+              <label>Resource Title</label>
+
+              <input
+                type="text"
+                name="title"
+                value={form.title}
+                onChange={onChange}
+                placeholder="Example: Data Structures Notes"
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Semester</label>
+
+              <select
+                name="semester"
+                value={form.semester}
+                onChange={onChange}
+                required
+              >
+                <option value="">
+                  Select Semester
+                </option>
+
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(
+                  (semester) => (
+                    <option
+                      key={semester}
+                      value={semester}
+                    >
+                      Semester {semester}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+
+            <div className="admin-field full-field">
+              <label>Subject</label>
+
+              <input
+                type="text"
+                name="subject"
+                value={form.subject}
+                onChange={onChange}
+                placeholder="Example: Data Structures And Algorithm"
+                required
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Unit 1 Link</label>
+
+              <input
+                type="url"
+                name="unit1"
+                value={form.unit1}
+                onChange={onChange}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Unit 2 Link</label>
+
+              <input
+                type="url"
+                name="unit2"
+                value={form.unit2}
+                onChange={onChange}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Unit 3 Link</label>
+
+              <input
+                type="url"
+                name="unit3"
+                value={form.unit3}
+                onChange={onChange}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Unit 4 Link</label>
+
+              <input
+                type="url"
+                name="unit4"
+                value={form.unit4}
+                onChange={onChange}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Unit 5 Link</label>
+
+              <input
+                type="url"
+                name="unit5"
+                value={form.unit5}
+                onChange={onChange}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>PYQ / Question Papers Link</label>
+
+              <input
+                type="url"
+                name="pyq"
+                value={form.pyq}
+                onChange={onChange}
+                placeholder="Paste PYQ / CT links (one per line or Google Drive link)"
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Presentation / PPT Link</label>
+
+              <input
+                type="url"
+                name="ppt"
+                value={form.ppt}
+                onChange={onChange}
+                placeholder="https://drive.google.com/... (PPTs / Slides)"
+              />
+            </div>
+
+          </div>
+
+          <div className="resource-form-actions">
+
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="save-resource-button"
+            >
+              + Add Resource
+            </button>
+
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ username, onLogout }) {
   const [activePage, setActivePage] = useState("Overview");
   const [resources, setResources] = useState([]);
@@ -381,205 +574,6 @@ export default function Dashboard({ username, onLogout }) {
   const totalResources = resources.length;
   const totalSubjects = subjects.length;
   const totalSemesters = 8;
-
-  function ResourceForm() {
-    return (
-      <div className="resource-modal-overlay">
-        <div className="resource-modal">
-
-          <div className="resource-modal-header">
-            <div>
-              <span className="panel-kicker">
-                CONTENT MANAGEMENT
-              </span>
-
-              <h2>Add Resource</h2>
-
-              <p>
-                Add Units 1–5 and PYQ links for a subject.
-              </p>
-            </div>
-
-            <button
-              className="modal-close"
-              type="button"
-              onClick={() => {
-                setShowResourceForm(false);
-                resetForm();
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          <form onSubmit={handleAddResource}>
-
-            <div className="form-grid">
-
-              <div className="admin-field">
-                <label>Resource Title</label>
-
-                <input
-                  type="text"
-                  name="title"
-                  value={form.title}
-                  onChange={handleFormChange}
-                  placeholder="Example: Data Structures Notes"
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Semester</label>
-
-                <select
-                  name="semester"
-                  value={form.semester}
-                  onChange={handleFormChange}
-                  required
-                >
-                  <option value="">
-                    Select Semester
-                  </option>
-
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(
-                    (semester) => (
-                      <option
-                        key={semester}
-                        value={semester}
-                      >
-                        Semester {semester}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-              <div className="admin-field full-field">
-                <label>Subject</label>
-
-                <input
-                  type="text"
-                  name="subject"
-                  value={form.subject}
-                  onChange={handleFormChange}
-                  placeholder="Example: Data Structures And Algorithm"
-                  required
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Unit 1 Link</label>
-
-                <input
-                  type="url"
-                  name="unit1"
-                  value={form.unit1}
-                  onChange={handleFormChange}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Unit 2 Link</label>
-
-                <input
-                  type="url"
-                  name="unit2"
-                  value={form.unit2}
-                  onChange={handleFormChange}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Unit 3 Link</label>
-
-                <input
-                  type="url"
-                  name="unit3"
-                  value={form.unit3}
-                  onChange={handleFormChange}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Unit 4 Link</label>
-
-                <input
-                  type="url"
-                  name="unit4"
-                  value={form.unit4}
-                  onChange={handleFormChange}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Unit 5 Link</label>
-
-                <input
-                  type="url"
-                  name="unit5"
-                  value={form.unit5}
-                  onChange={handleFormChange}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>PYQ / Question Papers Link</label>
-
-                <input
-                  type="url"
-                  name="pyq"
-                  value={form.pyq}
-                  onChange={handleFormChange}
-                  placeholder="Paste PYQ / CT links (one per line or Google Drive link)"
-                />
-              </div>
-
-              <div className="admin-field">
-                <label>Presentation / PPT Link</label>
-
-                <input
-                  type="url"
-                  name="ppt"
-                  value={form.ppt}
-                  onChange={handleFormChange}
-                  placeholder="https://drive.google.com/... (PPTs / Slides)"
-                />
-              </div>
-
-            </div>
-
-            <div className="resource-form-actions">
-
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => {
-                  setShowResourceForm(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="save-resource-button"
-              >
-                + Add Resource
-              </button>
-
-            </div>
-
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   function OverviewPage() {
     return (
@@ -2147,7 +2141,15 @@ export default function Dashboard({ username, onLogout }) {
       </main>
 
       {showResourceForm && (
-        <ResourceForm />
+        <ResourceForm
+          form={form}
+          onChange={handleFormChange}
+          onSubmit={handleAddResource}
+          onClose={() => {
+            setShowResourceForm(false);
+            resetForm();
+          }}
+        />
       )}
 
       {showBulkModal && (
