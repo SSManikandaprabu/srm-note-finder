@@ -716,11 +716,18 @@ export default function App() {
   const [showStudentAuth, setShowStudentAuth] = useState(false);
   const [showPrivateMessages, setShowPrivateMessages] = useState(false);
   const [pdfViewerTarget, setPdfViewerTarget] = useState(null);
+  const [pendingPdfTarget, setPendingPdfTarget] = useState(null);
 
   function handleOpenPdf(target) {
-    if (!studentToken) {
+    const activeToken =
+      studentToken || localStorage.getItem("srm-student-token") || "";
+    if (!activeToken) {
+      setPendingPdfTarget(target);
       setShowStudentAuth(true);
       return;
+    }
+    if (!studentToken) {
+      setStudentToken(activeToken);
     }
     setPdfViewerTarget(target);
   }
@@ -3650,8 +3657,15 @@ export default function App() {
               localStorage.setItem("srm-student-email", data.user.email);
             }
             setShowStudentAuth(false);
+            if (pendingPdfTarget) {
+              setPdfViewerTarget(pendingPdfTarget);
+              setPendingPdfTarget(null);
+            }
           }}
-          onClose={() => setShowStudentAuth(false)}
+          onClose={() => {
+            setShowStudentAuth(false);
+            setPendingPdfTarget(null);
+          }}
         />
       )}
 

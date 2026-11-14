@@ -40,7 +40,10 @@ export default function PdfViewerModal({
       setCurrentPage(1);
       setEmbedUrl("");
 
-      if (!studentToken) {
+      const activeToken =
+        studentToken || localStorage.getItem("srm-student-token") || "";
+
+      if (!activeToken) {
         setLoading(false);
         setError("Please sign in to view this PDF.");
         return;
@@ -57,16 +60,15 @@ export default function PdfViewerModal({
           `${apiBase}/api/resources/${target.resourceId}/pdf-meta?${params.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${studentToken}`,
+              Authorization: `Bearer ${activeToken}`,
             },
           }
         );
 
         if (metaRes.status === 401 || metaRes.status === 403) {
           if (!cancelled) {
-            setError("Session expired or unauthorized. Please sign in to view PDFs.");
+            setError("Your session has expired. Please sign in again to view PDFs.");
             setLoading(false);
-            onRequireLogin?.();
           }
           return;
         }
@@ -91,7 +93,7 @@ export default function PdfViewerModal({
           `${apiBase}/api/resources/${target.resourceId}/pdf-stream?${params.toString()}`,
           {
             headers: {
-              Authorization: `Bearer ${studentToken}`,
+              Authorization: `Bearer ${activeToken}`,
             },
           }
         );
