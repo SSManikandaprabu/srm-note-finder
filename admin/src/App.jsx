@@ -9,6 +9,7 @@ const API_BASE =
 export default function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -159,7 +160,7 @@ export default function App() {
               <div className="field password-field">
 
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) =>
@@ -169,6 +170,16 @@ export default function App() {
                   autoComplete="current-password"
                   aria-label="Password"
                 />
+
+                <button
+                  type="button"
+                  className="admin-password-eye"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
 
               </div>
 

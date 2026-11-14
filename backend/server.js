@@ -1892,6 +1892,210 @@ app.use((error, req, res, next) => {
   });
 });
 
+async function getChatSettings() {
+  let settings = await Settings.findOne();
+  if (!settings) {
+    settings = await Settings.create({});
+  }
+  return settings;
+}
+
+async function verifyStudentToken(token) {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const secret = process.env.JWT_SECRET || "srm-note-finder-secret";
+    const decoded = jwt.verify(token, secret);
+    if (decoded?.role !== "student" || !decoded?.sub) return null;
+
+    const student = await StudentAuth.findOne({
+      _id: decoded.sub,
+      emailVerified: true,
+    }).select("_id email username status blockScope blockedUntil blockReason");
+
+    if (!student) return null;
+
+    if (student.status === "blocked") {
+      return { blocked: true, message: "Your account is permanently restricted." };
+    }
+
+    if (student.blockedUntil && new Date() < new Date(student.blockedUntil)) {
+      const scope = student.blockScope || "all_chat";
+      if (scope === "community" || scope === "all_chat" || scope === "website") {
+        const mins = Math.ceil((new Date(student.blockedUntil) - new Date()) / 60000);
+        return {
+          blocked: true,
+          message: `You are temporarily restricted from chatting for ${mins} minute(s). Reason: ${student.blockReason || "Policy violation"}`,
+        };
+      }
+    }
+
+    return student;
+  } catch {
+    return null;
+  }
+}
+
+async function loadCommunityMessages(token) {
+  const settings = await getChatSettings();
+  if (!settings.communityChatEnabled) {
+    return { status: 403, error: "Community chat is currently disabled by the admin.", settings };
+  }
+
+  const student = await verifyStudentToken(token);
+  if (!student) {
+    return {
+      status: 401,
+      error: "Please sign in with your verified student account to view community chat.",
+      authRequired: true,
+      settings,
+    };
+  }
+
+  const messages = await ChatMessage.find({
+    type: "community",
+    expiresAt: { $gt: new Date() },
+  })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
+
+  return { status: 200, messages: messages.reverse(), settings };
+}
+
+async function createCommunityMessage(token, rawText) {
+  const settings = await getChatSettings();
+  if (!settings.communityChatEnabled) {
+    return { status: 403, error: "Community chat is currently disabled by the admin." };
+  }
+
+  const student = await verifyStudentToken(token);
+  if (!student) {
+    return {
+      status: 401,
+      error: "Please sign in with your verified student account to send messages.",
+      authRequired: true,
+    };
+  }
+
+  if (student.blocked) {
+    return { status: 403, error: student.message };
+  }
+
+  const text = typeof rawText === "string" ? rawText.trim() : "";
+  if (!text || text.length > 2000) {
+    return { status: 400, error: "Message must contain 1–2000 characters." };
+  }
+
+  if (settings.spamDetectionEnabled !== false) {
+    const spamCheck = checkSpam(student._id.toString(), text);
+    if (spamCheck.isSpam) {
+      if (spamCheck.shouldBlock) {
+        const blockUntil = new Date(Date.now() + 10 * 60 * 1000);
+        await StudentAuth.findByIdAndUpdate(student._id, {
+          status: "active",
+          blockScope: "community",
+          blockedUntil: blockUntil,
+          blockReason: "Repeated message flooding/spamming",
+        });
+        return {
+          status: 429,
+          error: "Your chat access has been temporarily paused for 10 minutes due to repeated spamming.",
+        };
+      }
+      return { status: 429, error: spamCheck.reason };
+    }
+  }
+
+  const combinedWordlist = [
+    ...DEFAULT_ABUSIVE_WORDS,
+    ...(settings.customAbusiveWords || []),
+  ];
+  const moderationResult = analyzeAbuse(text, combinedWordlist);
+
+  let processedText = text;
+  let warning = null;
+  if (moderationResult.containsAbuse) {
+    const action = settings.abusiveWordAction || "mask";
+    if (action === "reject") {
+      return {
+        status: 400,
+        error: "Your message was rejected because it contains inappropriate or abusive language.",
+      };
+    }
+    if (action === "warn") {
+      warning = "Warning: Please keep community discussions polite and respectful.";
+    }
+    processedText = moderationResult.maskedText;
+  }
+
+  const displayName =
+    student.username ||
+    student.email.split("@")[0] ||
+    "Student";
+
+  const savedMessage = await ChatMessage.create({
+    type: "community",
+    senderId: student._id.toString(),
+    senderName: displayName,
+    text: processedText,
+  });
+
+  const messageObj = savedMessage.toObject();
+  io.emit("community:message", messageObj);
+
+  return { status: 201, message: messageObj, warning };
+}
+
+function extractBearerToken(req) {
+  const header = req.headers.authorization || "";
+  return header.startsWith("Bearer ") ? header.slice(7) : "";
+}
+
+app.get("/api/community/messages", async (req, res) => {
+  try {
+    const result = await loadCommunityMessages(extractBearerToken(req));
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error,
+        authRequired: Boolean(result.authRequired),
+      });
+    }
+    return res.json({
+      success: true,
+      messages: result.messages,
+      settings: {
+        communityChatEnabled: result.settings.communityChatEnabled,
+        privateChatEnabled: result.settings.privateChatEnabled,
+      },
+    });
+  } catch (error) {
+    console.error("Community REST load error:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to load community messages." });
+  }
+});
+
+app.post("/api/community/messages", async (req, res) => {
+  try {
+    const result = await createCommunityMessage(extractBearerToken(req), req.body?.text);
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error,
+        authRequired: Boolean(result.authRequired),
+      });
+    }
+    return res.status(201).json({
+      success: true,
+      message: result.message,
+      warning: result.warning || undefined,
+    });
+  } catch (error) {
+    console.error("Community REST send error:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to send your message." });
+  }
+});
+
 // ===============================
 // START SERVER
 // ===============================
@@ -1923,89 +2127,27 @@ io.on("connection", (socket) => {
 
   let lastMessageTime = 0;
 
-  async function getChatSettings() {
-    let settings = await Settings.findOne();
-
-    if (!settings) {
-      settings = await Settings.create({});
-    }
-
-    return settings;
-  }
-
-  async function verifyStudentToken(token) {
-    if (!token || typeof token !== "string") return null;
-    try {
-      const secret = process.env.JWT_SECRET || "srm-note-finder-secret";
-      const decoded = jwt.verify(token, secret);
-      if (decoded?.role !== "student" || !decoded?.sub) return null;
-
-      const student = await StudentAuth.findOne({
-        _id: decoded.sub,
-        emailVerified: true,
-      }).select("_id email username status blockScope blockedUntil blockReason");
-
-      if (!student) return null;
-
-      // Check permanent website or chat block
-      if (student.status === "blocked") {
-        return { blocked: true, message: "Your account is permanently restricted." };
-      }
-
-      // Check temporary block
-      if (student.blockedUntil && new Date() < new Date(student.blockedUntil)) {
-        const scope = student.blockScope || "all_chat";
-        if (scope === "community" || scope === "all_chat" || scope === "website") {
-          const mins = Math.ceil((new Date(student.blockedUntil) - new Date()) / 60000);
-          return {
-            blocked: true,
-            message: `You are temporarily restricted from chatting for ${mins} minute(s). Reason: ${student.blockReason || "Policy violation"}`,
-          };
-        }
-      }
-
-      return student;
-    } catch {
-      return null;
-    }
-  }
-
   socket.on("community:load", async (payload) => {
     try {
-      const settings = await getChatSettings();
-
-      socket.emit("chat:settings", {
-        communityChatEnabled: settings.communityChatEnabled,
-        privateChatEnabled: settings.privateChatEnabled,
-      });
-
-      if (!settings.communityChatEnabled) {
-        socket.emit("chat:error", {
-          message: "Community chat is currently disabled by the admin.",
-        });
-        return;
-      }
-
       const token = socket.handshake.auth?.token || payload?.token;
-      const student = await verifyStudentToken(token);
+      const result = await loadCommunityMessages(token);
 
-      if (!student) {
+      if (result.settings) {
+        socket.emit("chat:settings", {
+          communityChatEnabled: result.settings.communityChatEnabled,
+          privateChatEnabled: result.settings.privateChatEnabled,
+        });
+      }
+
+      if (result.error) {
         socket.emit("chat:error", {
-          message: "Please sign in with your verified student account to view community chat.",
-          authRequired: true,
+          message: result.error,
+          authRequired: Boolean(result.authRequired),
         });
         return;
       }
 
-      const messages = await ChatMessage.find({
-        type: "community",
-        expiresAt: { $gt: new Date() },
-      })
-        .sort({ createdAt: -1 })
-        .limit(100)
-        .lean();
-
-      socket.emit("community:history", messages.reverse());
+      socket.emit("community:history", result.messages);
     } catch (error) {
       console.error("Community history error:", error.message);
       socket.emit("chat:error", {
@@ -2016,47 +2158,7 @@ io.on("connection", (socket) => {
 
   socket.on("community:send", async (payload) => {
     try {
-      const settings = await getChatSettings();
-
-      if (!settings.communityChatEnabled) {
-        socket.emit("chat:error", {
-          message: "Community chat is currently disabled by the admin.",
-        });
-        return;
-      }
-
-      const token = socket.handshake.auth?.token || payload?.token;
-      const student = await verifyStudentToken(token);
-
-      if (!student) {
-        socket.emit("chat:error", {
-          message: "Please sign in with your verified student account to send messages.",
-          authRequired: true,
-        });
-        return;
-      }
-
-      if (student.blocked) {
-        socket.emit("chat:error", {
-          message: student.message,
-        });
-        return;
-      }
-
-      const text =
-        typeof payload?.text === "string"
-          ? payload.text.trim()
-          : "";
-
-      if (!text || text.length > 2000) {
-        socket.emit("chat:error", {
-          message: "Message must contain 1–2000 characters.",
-        });
-        return;
-      }
-
       const now = Date.now();
-
       if (now - lastMessageTime < 1000) {
         socket.emit("chat:error", {
           message: "Please wait before sending another message.",
@@ -2064,70 +2166,22 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // Check spam / rate limiting
-      if (settings.spamDetectionEnabled !== false) {
-        const spamCheck = checkSpam(student._id.toString(), text);
-        if (spamCheck.isSpam) {
-          if (spamCheck.shouldBlock) {
-            // Progressive penalty: temporary 10-minute block on community chat
-            const blockUntil = new Date(Date.now() + 10 * 60 * 1000);
-            await StudentAuth.findByIdAndUpdate(student._id, {
-              status: "active",
-              blockScope: "community",
-              blockedUntil: blockUntil,
-              blockReason: "Repeated message flooding/spamming",
-            });
-            socket.emit("chat:error", {
-              message: "Your chat access has been temporarily paused for 10 minutes due to repeated spamming.",
-            });
-            return;
-          }
-          socket.emit("chat:error", {
-            message: spamCheck.reason,
-          });
-          return;
-        }
+      const token = socket.handshake.auth?.token || payload?.token;
+      const result = await createCommunityMessage(token, payload?.text);
+
+      if (result.error) {
+        socket.emit("chat:error", {
+          message: result.error,
+          authRequired: Boolean(result.authRequired),
+        });
+        return;
       }
 
-      // Analyze abusive words with anti-obfuscation normalization
-      const combinedWordlist = [
-        ...DEFAULT_ABUSIVE_WORDS,
-        ...(settings.customAbusiveWords || []),
-      ];
-      const moderationResult = analyzeAbuse(text, combinedWordlist);
-
-      let processedText = text;
-      if (moderationResult.containsAbuse) {
-        const action = settings.abusiveWordAction || "mask";
-        if (action === "reject") {
-          socket.emit("chat:error", {
-            message: "Your message was rejected because it contains inappropriate or abusive language.",
-          });
-          return;
-        } else if (action === "warn") {
-          socket.emit("chat:warning", {
-            message: "Warning: Please keep community discussions polite and respectful.",
-          });
-        }
-        // If action is "mask" or fallback, replace offending terms with asterisks
-        processedText = moderationResult.maskedText;
+      if (result.warning) {
+        socket.emit("chat:warning", { message: result.warning });
       }
 
       lastMessageTime = now;
-
-      const displayName =
-        student.username ||
-        student.email.split("@")[0] ||
-        "Student";
-
-      const savedMessage = await ChatMessage.create({
-        type: "community",
-        senderId: student._id.toString(),
-        senderName: displayName,
-        text: processedText,
-      });
-
-      io.emit("community:message", savedMessage.toObject());
     } catch (error) {
       console.error("Community send error:", error.message);
       socket.emit("chat:error", {

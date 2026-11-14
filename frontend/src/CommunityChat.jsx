@@ -49,8 +49,32 @@ export default function CommunityChat({
       return;
     }
 
+    let cancelled = false;
+
+    async function loadViaRest() {
+      try {
+        const res = await fetch(`${API_BASE}/api/community/messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+          setStatus("Connected");
+        } else if (data.message && !socketRef.current?.connected) {
+          setStatus(data.message);
+        }
+      } catch {
+        // Silent fallback if offline; socket or next poll will retry
+      }
+    }
+
+    loadViaRest();
+
     const socket = io(API_BASE, {
       auth: { token },
+      reconnectionAttempts: 3,
+      timeout: 5000,
     });
     socketRef.current = socket;
 
@@ -60,7 +84,12 @@ export default function CommunityChat({
     });
 
     socket.on("disconnect", () => {
-      setStatus("Disconnected");
+      // Stay connected via REST polling when WebSocket isn't persistent (e.g. Vercel serverless)
+      loadViaRest();
+    });
+
+    socket.on("connect_error", () => {
+      loadViaRest();
     });
 
     socket.on("chat:error", (error) => {
@@ -69,6 +98,7 @@ export default function CommunityChat({
 
     socket.on("community:history", (history) => {
       setMessages(Array.isArray(history) ? history : []);
+      setStatus("Connected");
     });
 
     socket.on("community:message", (newMessage) => {
@@ -88,7 +118,15 @@ export default function CommunityChat({
       });
     });
 
+    const pollInterval = setInterval(() => {
+      if (!socket.connected) {
+        loadViaRest();
+      }
+    }, 5000);
+
     return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -139,13 +177,51 @@ export default function CommunityChat({
 
     const socket = socketRef.current;
 
-    if (!socket?.connected) {
-      setStatus("Disconnected");
+    if (socket?.connected) {
+      socket.emit("community:send", { text, token });
+      setMessage("");
       return;
     }
 
-    socket.emit("community:send", { text, token });
-    setMessage("");
+    try {
+      setIsSendingAdmin(true);
+      const res = await fetch(`${API_BASE}/api/community/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || "Unable to send your message.");
+      }
+      if (data.message) {
+        setMessages((previous) => {
+          if (
+            previous.some(
+              (item) =>
+                item._id &&
+                data.message._id &&
+                item._id === data.message._id
+            )
+          ) {
+            return previous;
+          }
+          return [...previous, data.message];
+        });
+      }
+      setStatus("Connected");
+      setMessage("");
+    } catch (err) {
+      setAdminNotice({
+        type: "error",
+        text: err.message || "Unable to send your message.",
+      });
+    } finally {
+      setIsSendingAdmin(false);
+    }
   }
 
   const isConnected = status.toLowerCase().includes("connected") && !status.toLowerCase().includes("dis");

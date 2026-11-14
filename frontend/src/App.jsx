@@ -677,19 +677,36 @@ function navButton(active) {
 export default function App() {
   const [page, setPage] = useState(() => {
     try {
-      const param = new URLSearchParams(window.location.search).get("page");
-      return param === "gpa" ? "gpa" : "home";
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("page") === "gpa") return "gpa";
+      if (params.get("semester") && params.get("subject")) return "subject";
+      if (params.get("semester")) return "semester";
+      return "home";
     } catch {
       return "home";
     }
   });
   const [gpaShareStatus, setGpaShareStatus] = useState("");
+  const [subjectShareStatus, setSubjectShareStatus] = useState("");
 
   const [selectedSemester, setSelectedSemester] =
-    useState(null);
+    useState(() => {
+      try {
+        const sem = Number(new URLSearchParams(window.location.search).get("semester"));
+        return Number.isFinite(sem) && sem > 0 ? sem : null;
+      } catch {
+        return null;
+      }
+    });
 
   const [selectedSubject, setSelectedSubject] =
-    useState(null);
+    useState(() => {
+      try {
+        return new URLSearchParams(window.location.search).get("subject") || null;
+      } catch {
+        return null;
+      }
+    });
 
   const [resources, setResources] = useState([]);
 
@@ -1816,7 +1833,8 @@ export default function App() {
                   <button
                     className="share-whatsapp-btn"
                     onClick={() => {
-                      const shareText = `📚 *${selectedSubject}* - Semester ${selectedSemester} Notes, Question Papers (PYQs), and PPTs are available here for free on SRM Note Finder:\n\n🔗 ${window.location.origin}`;
+                      const directUrl = `${window.location.origin}/?semester=${selectedSemester}&subject=${encodeURIComponent(selectedSubject)}`;
+                      const shareText = `📚 *${selectedSubject}* - Semester ${selectedSemester} Notes, Question Papers (PYQs), and PPTs are available here for free on SRM Note Finder:\n\n🔗 ${directUrl}`;
                       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
                       window.open(whatsappUrl, "_blank");
                     }}
@@ -1833,19 +1851,55 @@ export default function App() {
                       fontWeight: "700",
                       cursor: "pointer",
                       boxShadow: "0 4px 14px rgba(37, 211, 102, 0.35)",
-                      transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                      transition: "transform 0.2s ease",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "0 6px 18px rgba(37, 211, 102, 0.45)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(37, 211, 102, 0.35)";
-                    }}
-                    title="Share these notes directly to your class WhatsApp group"
                   >
-                    <span>📲</span> Share to WhatsApp
+                    <span>📲</span>
+                    <span>WhatsApp</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const directUrl = `${window.location.origin}/?semester=${selectedSemester}&subject=${encodeURIComponent(selectedSubject)}`;
+                      if (navigator.share) {
+                        try {
+                          await navigator.share({
+                            title: `${selectedSubject} - SRM Note Finder`,
+                            text: `${selectedSubject} (Semester ${selectedSemester}) notes & PYQs:`,
+                            url: directUrl,
+                          });
+                          setSubjectShareStatus("Shared!");
+                          setTimeout(() => setSubjectShareStatus(""), 2500);
+                          return;
+                        } catch (err) {
+                          if (err?.name === "AbortError") return;
+                        }
+                      }
+                      try {
+                        await navigator.clipboard.writeText(directUrl);
+                        setSubjectShareStatus("Link Copied!");
+                      } catch {
+                        setSubjectShareStatus("Ready");
+                      }
+                      setTimeout(() => setSubjectShareStatus(""), 2500);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 14px",
+                      borderRadius: "10px",
+                      background: "rgba(34, 211, 238, 0.14)",
+                      color: "#67e8f9",
+                      border: "1px solid rgba(103, 232, 249, 0.35)",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>🔗</span>
+                    <span>{subjectShareStatus || "Share Note Link"}</span>
                   </button>
                 </>
               )}
