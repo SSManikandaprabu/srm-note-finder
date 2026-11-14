@@ -703,7 +703,7 @@ export default function App() {
     useState("aurora");
 
   const [glowIntensity, setGlowIntensity] =
-    useState("medium");
+    useState("high");
 
   const [studentToken, setStudentToken] = useState(
     () => localStorage.getItem("srm-student-token") || ""

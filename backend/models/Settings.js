@@ -36,7 +36,7 @@ const settingsSchema = new mongoose.Schema(
     },
     glowIntensity: {
       type: String,
-      default: "medium",
+      default: "high",
     },
     // Step 3 Moderation Rules
     abusiveWordAction: {
