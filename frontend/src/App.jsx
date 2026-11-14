@@ -100,6 +100,35 @@ function normalizeLinks(value) {
     .filter(Boolean);
 }
 
+function normalizeUnitFiles(resource, unit) {
+  if (!resource) return [];
+  const structured = Array.isArray(resource[`unit${unit}Files`])
+    ? resource[`unit${unit}Files`]
+        .map((item, idx) => {
+          if (!item || !item.url) return null;
+          const url = String(item.url).trim();
+          if (!url) return null;
+          return {
+            _id: item._id,
+            title: String(item.title || "").trim() || `Unit ${unit} PDF ${idx + 1}`,
+            url,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  const seen = new Set(structured.map((f) => f.url));
+  const legacy = normalizeLinks(resource[`unit${unit}`]);
+  legacy.forEach((url) => {
+    if (!seen.has(url)) {
+      structured.push({ title: "", url });
+      seen.add(url);
+    }
+  });
+
+  return structured;
+}
+
 function formatDate(value) {
   if (!value) return "-";
 
@@ -115,7 +144,7 @@ function getTotalResources(resources) {
     let count = 0;
 
     [1, 2, 3, 4, 5].forEach((unit) => {
-      count += normalizeLinks(item[`unit${unit}`]).length;
+      count += normalizeUnitFiles(item, unit).length;
     });
 
     count += normalizeLinks(item.pyq).length;
@@ -131,7 +160,7 @@ function getTotalResources(resources) {
 function ResourceRow({ item, onEdit, onDelete }) {
   const unitCount = [1, 2, 3, 4, 5].filter(
     (unit) =>
-      normalizeLinks(item[`unit${unit}`]).length > 0
+      normalizeUnitFiles(item, unit).length > 0
   ).length;
 
   const pyqCount = normalizeLinks(item.pyq).length;
@@ -374,20 +403,26 @@ function ResourceCard({
 
       {links.length ? (
         <div className="link-list">
-          {links.map((link, index) => (
-            <a
-              key={`${link}-${index}`}
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              className="drive-link"
-            >
-              <span>🔗</span>
-              Open Resource
-              {links.length > 1 ? ` ${index + 1}` : ""}
-              <span>↗</span>
-            </a>
-          ))}
+          {links.map((item, index) => {
+            const url = typeof item === "string" ? item : item.url;
+            const label =
+              typeof item === "object" && item.title
+                ? item.title
+                : `Open Resource${links.length > 1 ? ` ${index + 1}` : ""}`;
+            return (
+              <a
+                key={`${url}-${index}`}
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="drive-link"
+              >
+                <span>📄</span>
+                {label}
+                <span>↗</span>
+              </a>
+            );
+          })}
         </div>
       ) : (
         <div className="no-link">No resource added</div>
@@ -1792,16 +1827,14 @@ export default function App() {
                     Number(b.unit) === unit
                 );
 
+                const unitFiles = normalizeUnitFiles(resource, unit);
+
                 return (
                   <ResourceCard
                     key={unit}
                     unit={unit}
                     subject={selectedSubject}
-                    links={normalizeLinks(
-                      resource?.[
-                        `unit${unit}`
-                      ]
-                    )}
+                    links={unitFiles}
                     isBookmarked={isUnitBookmarked}
                     onToggleBookmark={() =>
                       handleToggleBookmark({
@@ -1810,7 +1843,7 @@ export default function App() {
                         semester: Number(selectedSemester),
                         unit,
                         title: `${selectedSubject} - Unit ${unit}`,
-                        link: normalizeLinks(resource?.[`unit${unit}`])[0] || "",
+                        link: unitFiles[0]?.url || "",
                       })
                     }
                   />
@@ -3461,7 +3494,10 @@ export default function App() {
                     backgroundColor: item.color,
                     boxShadow: theme === item.id ? `0 0 10px ${item.color}` : "none",
                   }}
-                  onClick={() => setTheme(item.id)}
+                  onClick={() => {
+                    setTheme(item.id);
+                    setCustomizerOpen(false);
+                  }}
                   title={item.label}
                 />
               ))}
@@ -3473,10 +3509,16 @@ export default function App() {
 
             <select
               value={background}
-              onChange={(e) => setBackground(e.target.value)}
+              onChange={(e) => {
+                setBackground(e.target.value);
+                setCustomizerOpen(false);
+              }}
             >
               <option value="aurora">Aurora</option>
               <option value="moving-gradient">Moving Gradient</option>
+              <option value="ocean-wave">Ocean Wave (Moving)</option>
+              <option value="sunset-glow">Sunset Glow (Moving)</option>
+              <option value="neon-pulse">Neon Pulse (Moving)</option>
               <option value="deep-dark">Deep Dark</option>
             </select>
           </div>
@@ -3486,7 +3528,10 @@ export default function App() {
 
             <select
               value={glowIntensity}
-              onChange={(e) => setGlowIntensity(e.target.value)}
+              onChange={(e) => {
+                setGlowIntensity(e.target.value);
+                setCustomizerOpen(false);
+              }}
             >
               <option value="low">Low (Subtle)</option>
               <option value="medium">Medium (Balanced)</option>

@@ -121,6 +121,14 @@ async function recordAuditLog({ action, actorRole = "admin", actorId = "admin", 
 // MONGODB
 // ===============================
 
+const unitFileSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    url: { type: String, required: true, trim: true },
+  },
+  { _id: true }
+);
+
 const resourceSchema = new mongoose.Schema(
   {
     title: {
@@ -176,6 +184,11 @@ const resourceSchema = new mongoose.Schema(
     unit3: { type: String, default: "", trim: true },
     unit4: { type: String, default: "", trim: true },
     unit5: { type: String, default: "", trim: true },
+    unit1Files: { type: [unitFileSchema], default: [] },
+    unit2Files: { type: [unitFileSchema], default: [] },
+    unit3Files: { type: [unitFileSchema], default: [] },
+    unit4Files: { type: [unitFileSchema], default: [] },
+    unit5Files: { type: [unitFileSchema], default: [] },
     pyq: { type: String, default: "", trim: true },
     ppt: { type: String, default: "", trim: true },
 
@@ -1087,6 +1100,23 @@ app.get("/api/resources/:id", async (req, res) => {
   }
 });
 
+function normalizeUnitFiles(files, unitNum) {
+  if (!Array.isArray(files)) return [];
+  return files
+    .map((item, idx) => {
+      if (!item || typeof item !== "object") return null;
+      const url = String(item.url || "").trim();
+      if (!url) return null;
+      const title = String(item.title || "").trim() || `Unit ${unitNum} PDF ${idx + 1}`;
+      const entry = { title: title.slice(0, 200), url };
+      if (item._id && mongoose.Types.ObjectId.isValid(item._id)) {
+        entry._id = item._id;
+      }
+      return entry;
+    })
+    .filter(Boolean);
+}
+
 // ===============================
 // ADD RESOURCE (PROTECTED ADMIN ROUTE)
 // ===============================
@@ -1108,6 +1138,11 @@ app.post("/api/resources", requireAdminAuth, async (req, res) => {
       unit3,
       unit4,
       unit5,
+      unit1Files,
+      unit2Files,
+      unit3Files,
+      unit4Files,
+      unit5Files,
       pyq,
       ppt,
     } = req.body;
@@ -1134,6 +1169,11 @@ app.post("/api/resources", requireAdminAuth, async (req, res) => {
       unit3: unit3 || "",
       unit4: unit4 || "",
       unit5: unit5 || "",
+      unit1Files: normalizeUnitFiles(unit1Files, 1),
+      unit2Files: normalizeUnitFiles(unit2Files, 2),
+      unit3Files: normalizeUnitFiles(unit3Files, 3),
+      unit4Files: normalizeUnitFiles(unit4Files, 4),
+      unit5Files: normalizeUnitFiles(unit5Files, 5),
       pyq: pyq || "",
       ppt: ppt || "",
     });
@@ -1172,11 +1212,19 @@ app.post("/api/resources", requireAdminAuth, async (req, res) => {
 
 app.put("/api/resources/:id", requireAdminAuth, async (req, res) => {
   try {
+    const updatePayload = { ...req.body };
+    [1, 2, 3, 4, 5].forEach((u) => {
+      const key = `unit${u}Files`;
+      if (key in updatePayload) {
+        updatePayload[key] = normalizeUnitFiles(updatePayload[key], u);
+      }
+    });
+
     const updatedResource =
       await Resource.findByIdAndUpdate(
         req.params.id,
         {
-          $set: req.body,
+          $set: updatePayload,
         },
         {
           returnDocument: "after",
@@ -1215,6 +1263,106 @@ app.put("/api/resources/:id", requireAdminAuth, async (req, res) => {
       message: "Unable to update resource",
       error: error.message,
     });
+  }
+});
+
+// ===============================
+// ADD / UPDATE / DELETE INDIVIDUAL UNIT PDF (PROTECTED ADMIN ROUTES)
+// ===============================
+
+app.post("/api/resources/:id/units/:unitNumber/files", requireAdminAuth, async (req, res) => {
+  try {
+    const unitNum = Number(req.params.unitNumber);
+    if (![1, 2, 3, 4, 5].includes(unitNum)) {
+      return res.status(400).json({ success: false, message: "Invalid unit number (must be 1-5)" });
+    }
+
+    const url = String(req.body.url || "").trim();
+    const title = String(req.body.title || "").trim() || `Unit ${unitNum} PDF`;
+    if (!url) {
+      return res.status(400).json({ success: false, message: "PDF link or file URL is required" });
+    }
+
+    const field = `unit${unitNum}Files`;
+    const updatedResource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      { $push: { [field]: { title: title.slice(0, 200), url } } },
+      { returnDocument: "after", runValidators: true }
+    );
+
+    if (!updatedResource) {
+      return res.status(404).json({ success: false, message: "Resource not found" });
+    }
+
+    invalidateResourcesCache();
+    res.json({ success: true, message: "PDF added to unit", resource: updatedResource, data: updatedResource });
+  } catch (error) {
+    console.error("Error adding unit PDF:", error);
+    res.status(500).json({ success: false, message: "Unable to add unit PDF", error: error.message });
+  }
+});
+
+app.put("/api/resources/:id/units/:unitNumber/files/:fileId", requireAdminAuth, async (req, res) => {
+  try {
+    const unitNum = Number(req.params.unitNumber);
+    if (![1, 2, 3, 4, 5].includes(unitNum)) {
+      return res.status(400).json({ success: false, message: "Invalid unit number (must be 1-5)" });
+    }
+
+    const resource = await Resource.findById(req.params.id);
+    if (!resource) {
+      return res.status(404).json({ success: false, message: "Resource not found" });
+    }
+
+    const field = `unit${unitNum}Files`;
+    const fileDoc = resource[field].id(req.params.fileId);
+    if (!fileDoc) {
+      return res.status(404).json({ success: false, message: "PDF not found in unit" });
+    }
+
+    if (req.body.title !== undefined) {
+      fileDoc.title = String(req.body.title).trim().slice(0, 200) || fileDoc.title;
+    }
+    if (req.body.url !== undefined) {
+      const nextUrl = String(req.body.url).trim();
+      if (!nextUrl) {
+        return res.status(400).json({ success: false, message: "PDF URL cannot be empty" });
+      }
+      fileDoc.url = nextUrl;
+    }
+
+    const updatedResource = await resource.save();
+    invalidateResourcesCache();
+    res.json({ success: true, message: "Unit PDF updated", resource: updatedResource, data: updatedResource });
+  } catch (error) {
+    console.error("Error updating unit PDF:", error);
+    res.status(500).json({ success: false, message: "Unable to update unit PDF", error: error.message });
+  }
+});
+
+app.delete("/api/resources/:id/units/:unitNumber/files/:fileId", requireAdminAuth, async (req, res) => {
+  try {
+    const unitNum = Number(req.params.unitNumber);
+    if (![1, 2, 3, 4, 5].includes(unitNum)) {
+      return res.status(400).json({ success: false, message: "Invalid unit number (must be 1-5)" });
+    }
+
+    const field = `unit${unitNum}Files`;
+    const updatedResource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { [field]: { _id: req.params.fileId } } },
+      { returnDocument: "after" }
+    );
+
+    if (!updatedResource) {
+      return res.status(404).json({ success: false, message: "Resource not found" });
+    }
+
+    invalidateResourcesCache();
+    res.json({ success: true, message: "Unit PDF deleted", resource: updatedResource, data: updatedResource });
+  } catch (error) {
+    console.error("Error deleting unit PDF:", error);
+    res.status(500).json({ success: false, message: "Unable to delete unit PDF", error: error.message });
   }
 });
 

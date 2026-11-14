@@ -8,7 +8,18 @@ import AnalyticsPage from "./AnalyticsPage";
 const API_BASE =
   (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
-function ResourceForm({ form, onChange, onSubmit, onClose }) {
+function ResourceForm({
+  form,
+  isEditing,
+  uploadingKey,
+  onChange,
+  onUnitFileChange,
+  onAddUnitFile,
+  onRemoveUnitFile,
+  onUploadUnitPdf,
+  onSubmit,
+  onClose,
+}) {
   return (
     <div className="resource-modal-overlay">
       <div className="resource-modal">
@@ -19,10 +30,10 @@ function ResourceForm({ form, onChange, onSubmit, onClose }) {
               CONTENT MANAGEMENT
             </span>
 
-            <h2>Add Resource</h2>
+            <h2>{isEditing ? "Edit Resource" : "Add Resource"}</h2>
 
             <p>
-              Add Units 1–5 and PYQ links for a subject.
+              Add one or more PDF files/links per unit (Units 1–5) and PYQ links for a subject.
             </p>
           </div>
 
@@ -90,65 +101,114 @@ function ResourceForm({ form, onChange, onSubmit, onClose }) {
               />
             </div>
 
-            <div className="admin-field">
-              <label>Unit 1 Link</label>
+            {[1, 2, 3, 4, 5].map((unit) => {
+              const files = form[`unit${unit}Files`] || [];
+              return (
+                <div className="admin-field full-field" key={unit}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label style={{ margin: 0 }}>Unit {unit} PDFs ({files.length})</label>
+                    <button
+                      type="button"
+                      onClick={() => onAddUnitFile(unit)}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        borderRadius: "6px",
+                        border: "1px solid rgba(99, 102, 241, 0.4)",
+                        background: "rgba(99, 102, 241, 0.12)",
+                        color: "#818cf8",
+                        cursor: "pointer",
+                      }}
+                    >
+                      + Add PDF
+                    </button>
+                  </div>
 
-              <input
-                type="url"
-                name="unit1"
-                value={form.unit1}
-                onChange={onChange}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="admin-field">
-              <label>Unit 2 Link</label>
-
-              <input
-                type="url"
-                name="unit2"
-                value={form.unit2}
-                onChange={onChange}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="admin-field">
-              <label>Unit 3 Link</label>
-
-              <input
-                type="url"
-                name="unit3"
-                value={form.unit3}
-                onChange={onChange}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="admin-field">
-              <label>Unit 4 Link</label>
-
-              <input
-                type="url"
-                name="unit4"
-                value={form.unit4}
-                onChange={onChange}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="admin-field">
-              <label>Unit 5 Link</label>
-
-              <input
-                type="url"
-                name="unit5"
-                value={form.unit5}
-                onChange={onChange}
-                placeholder="https://..."
-              />
-            </div>
+                  {files.length === 0 ? (
+                    <div style={{ fontSize: "12px", opacity: 0.7, padding: "6px 0" }}>
+                      No PDFs added for Unit {unit}. Click "+ Add PDF" to add one or more PDFs.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {files.map((file, idx) => {
+                        const rowKey = `${unit}-${idx}`;
+                        const isUploading = uploadingKey === rowKey;
+                        return (
+                          <div
+                            key={file._id || rowKey}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1.4fr auto auto",
+                              gap: "8px",
+                              alignItems: "center",
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={file.title}
+                              onChange={(e) => onUnitFileChange(unit, idx, "title", e.target.value)}
+                              placeholder={`Unit ${unit} PDF ${idx + 1} Title`}
+                            />
+                            <input
+                              type="url"
+                              value={file.url}
+                              onChange={(e) => onUnitFileChange(unit, idx, "url", e.target.value)}
+                              placeholder="https://... (PDF or Drive link)"
+                            />
+                            <label
+                              style={{
+                                padding: "8px 10px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(16, 185, 129, 0.35)",
+                                background: "rgba(16, 185, 129, 0.12)",
+                                color: "#34d399",
+                                cursor: isUploading ? "wait" : "pointer",
+                                whiteSpace: "nowrap",
+                                margin: 0,
+                              }}
+                              title="Upload a .pdf file"
+                            >
+                              {isUploading ? "Uploading..." : "Upload PDF"}
+                              <input
+                                type="file"
+                                accept="application/pdf,.pdf"
+                                style={{ display: "none" }}
+                                disabled={isUploading}
+                                onChange={(e) => {
+                                  const picked = e.target.files?.[0];
+                                  if (picked) onUploadUnitPdf(unit, idx, picked);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => onRemoveUnitFile(unit, idx)}
+                              title="Remove this PDF"
+                              style={{
+                                padding: "8px 10px",
+                                fontSize: "12px",
+                                fontWeight: "700",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(239, 68, 68, 0.35)",
+                                background: "rgba(239, 68, 68, 0.12)",
+                                color: "#f87171",
+                                cursor: "pointer",
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="admin-field">
               <label>PYQ / Question Papers Link</label>
@@ -190,7 +250,7 @@ function ResourceForm({ form, onChange, onSubmit, onClose }) {
               type="submit"
               className="save-resource-button"
             >
-              + Add Resource
+              {isEditing ? "Save Changes" : "+ Add Resource"}
             </button>
 
           </div>
@@ -207,6 +267,8 @@ export default function Dashboard({ username, onLogout }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showResourceForm, setShowResourceForm] = useState(false);
+  const [editingResourceId, setEditingResourceId] = useState(null);
+  const [uploadingKey, setUploadingKey] = useState(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkCsvText, setBulkCsvText] = useState("");
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -224,6 +286,11 @@ export default function Dashboard({ username, onLogout }) {
     unit3: "",
     unit4: "",
     unit5: "",
+    unit1Files: [],
+    unit2Files: [],
+    unit3Files: [],
+    unit4Files: [],
+    unit5Files: [],
     pyq: "",
     ppt: "",
   });
@@ -323,6 +390,7 @@ export default function Dashboard({ username, onLogout }) {
   }
 
   function resetForm() {
+    setEditingResourceId(null);
     setForm({
       title: "",
       subject: "",
@@ -332,9 +400,120 @@ export default function Dashboard({ username, onLogout }) {
       unit3: "",
       unit4: "",
       unit5: "",
+      unit1Files: [],
+      unit2Files: [],
+      unit3Files: [],
+      unit4Files: [],
+      unit5Files: [],
       pyq: "",
       ppt: "",
     });
+  }
+
+  function handleUnitFileChange(unit, index, field, value) {
+    const key = `unit${unit}Files`;
+    setForm((previous) => {
+      const updated = [...(previous[key] || [])];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...previous, [key]: updated };
+    });
+  }
+
+  function handleAddUnitFile(unit) {
+    const key = `unit${unit}Files`;
+    setForm((previous) => ({
+      ...previous,
+      [key]: [...(previous[key] || []), { title: "", url: "" }],
+    }));
+  }
+
+  function handleRemoveUnitFile(unit, index) {
+    const key = `unit${unit}Files`;
+    setForm((previous) => ({
+      ...previous,
+      [key]: (previous[key] || []).filter((_, i) => i !== index),
+    }));
+  }
+
+  async function handleUploadUnitPdf(unit, index, file) {
+    const rowKey = `${unit}-${index}`;
+    setUploadingKey(rowKey);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await axios.post(`${API_BASE}/api/admin/upload-pdf`, formData, {
+        headers: {
+          ...authHeaders.headers,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const fileUrl = res.data?.fileUrl;
+      if (!fileUrl) {
+        alert("Upload succeeded but no file URL was returned.");
+        return;
+      }
+      const key = `unit${unit}Files`;
+      setForm((previous) => {
+        const updated = [...(previous[key] || [])];
+        const current = updated[index] || { title: "", url: "" };
+        updated[index] = {
+          ...current,
+          title: current.title?.trim() ? current.title : file.name.replace(/\.pdf$/i, ""),
+          url: fileUrl,
+        };
+        return { ...previous, [key]: updated };
+      });
+    } catch (error) {
+      console.error("PDF upload error:", error);
+      alert(error.response?.data?.message || "Failed to upload PDF.");
+    } finally {
+      setUploadingKey(null);
+    }
+  }
+
+  function handleEditResource(resource) {
+    const id = resource._id || resource.id;
+    const toUnitFiles = (unitNum) => {
+      const existing = Array.isArray(resource[`unit${unitNum}Files`])
+        ? resource[`unit${unitNum}Files`].map((f) => ({
+            _id: f._id,
+            title: f.title || "",
+            url: f.url || "",
+          }))
+        : [];
+      const legacyUrls = String(resource[`unit${unitNum}`] || "")
+        .split(/\r?\n|,/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const seen = new Set(existing.map((f) => f.url));
+      legacyUrls.forEach((url, idx) => {
+        if (!seen.has(url)) {
+          existing.push({ title: `Unit ${unitNum} PDF ${existing.length + 1}`, url });
+          seen.add(url);
+        }
+      });
+      return existing;
+    };
+
+    setEditingResourceId(id);
+    setForm({
+      title: resource.title || "",
+      subject: resource.subject || "",
+      semester: resource.semester ? String(resource.semester) : "",
+      unit1: "",
+      unit2: "",
+      unit3: "",
+      unit4: "",
+      unit5: "",
+      unit1Files: toUnitFiles(1),
+      unit2Files: toUnitFiles(2),
+      unit3Files: toUnitFiles(3),
+      unit4Files: toUnitFiles(4),
+      unit5Files: toUnitFiles(5),
+      pyq: resource.pyq || "",
+      ppt: resource.ppt || "",
+    });
+    setShowResourceForm(true);
   }
 
   async function handleAddResource(event) {
@@ -350,7 +529,29 @@ export default function Dashboard({ username, onLogout }) {
       return;
     }
 
+    const cleanUnitFiles = (unitNum) =>
+      (form[`unit${unitNum}Files`] || [])
+        .map((item, idx) => ({
+          ...(item._id ? { _id: item._id } : {}),
+          title: (item.title || "").trim() || `Unit ${unitNum} PDF ${idx + 1}`,
+          url: (item.url || "").trim(),
+        }))
+        .filter((item) => item.url);
+
+    const unitFilesPayload = {
+      unit1Files: cleanUnitFiles(1),
+      unit2Files: cleanUnitFiles(2),
+      unit3Files: cleanUnitFiles(3),
+      unit4Files: cleanUnitFiles(4),
+      unit5Files: cleanUnitFiles(5),
+    };
+
+    const hasUnitFiles = [1, 2, 3, 4, 5].some(
+      (u) => unitFilesPayload[`unit${u}Files`].length > 0
+    );
+
     const hasLink =
+      hasUnitFiles ||
       form.unit1.trim() ||
       form.unit2.trim() ||
       form.unit3.trim() ||
@@ -360,42 +561,47 @@ export default function Dashboard({ username, onLogout }) {
       form.ppt.trim();
 
     if (!hasLink) {
-      alert("Please add at least one Unit, PPT, or PYQ link.");
+      alert("Please add at least one Unit PDF, PPT, or PYQ link.");
       return;
     }
 
+    const payload = {
+      title: form.title.trim() || form.subject + " Resources",
+      subject: form.subject.trim(),
+      semester: Number(form.semester),
+      unit1: form.unit1.trim(),
+      unit2: form.unit2.trim(),
+      unit3: form.unit3.trim(),
+      unit4: form.unit4.trim(),
+      unit5: form.unit5.trim(),
+      ...unitFilesPayload,
+      pyq: form.pyq.trim(),
+      ppt: form.ppt.trim(),
+    };
+
     try {
-      await axios.post(
-        API_BASE + "/api/resources",
-        {
-          title:
-            form.title.trim() ||
-            form.subject + " Resources",
-
-          subject: form.subject.trim(),
-
-          semester: Number(form.semester),
-
-          unit1: form.unit1.trim(),
-          unit2: form.unit2.trim(),
-          unit3: form.unit3.trim(),
-          unit4: form.unit4.trim(),
-          unit5: form.unit5.trim(),
-
-          pyq: form.pyq.trim(),
-          ppt: form.ppt.trim(),
-        },
-        authHeaders
-      );
-
-      alert("Resource added successfully.");
+      if (editingResourceId) {
+        await axios.put(
+          `${API_BASE}/api/resources/${editingResourceId}`,
+          payload,
+          authHeaders
+        );
+        alert("Resource updated successfully.");
+      } else {
+        await axios.post(
+          API_BASE + "/api/resources",
+          payload,
+          authHeaders
+        );
+        alert("Resource added successfully.");
+      }
 
       resetForm();
       setShowResourceForm(false);
 
       await loadDashboardData();
     } catch (error) {
-      console.error("Add resource error:", error);
+      console.error("Add/update resource error:", error);
 
       if (
         error.response?.status === 401 ||
@@ -408,7 +614,7 @@ export default function Dashboard({ username, onLogout }) {
 
       alert(
         error.response?.data?.message ||
-          "Unable to add resource."
+          "Unable to save resource."
       );
     }
   }
@@ -1671,14 +1877,14 @@ export default function Dashboard({ username, onLogout }) {
 
                       <div className="link-count">
 
-                        {[
-                          resource.unit1,
-                          resource.unit2,
-                          resource.unit3,
-                          resource.unit4,
-                          resource.unit5,
-                          resource.pyq,
-                        ].filter(Boolean).length}{" "}
+                        {[1, 2, 3, 4, 5].reduce((acc, u) => {
+                          const filesLen = Array.isArray(resource[`unit${u}Files`])
+                            ? resource[`unit${u}Files`].length
+                            : 0;
+                          const legacyLen = resource[`unit${u}`] ? 1 : 0;
+                          return acc + (filesLen > 0 ? filesLen : legacyLen);
+                        }, 0) +
+                          [resource.pyq, resource.ppt].filter(Boolean).length}{" "}
                         links
 
                       </div>
@@ -1687,16 +1893,25 @@ export default function Dashboard({ username, onLogout }) {
                   )}
 
                   <td>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        className="cancel-button"
+                        style={{ padding: "6px 12px", fontSize: "12px" }}
+                        onClick={() => handleEditResource(resource)}
+                      >
+                        Edit
+                      </button>
 
-                    <button
-                      className="delete-resource-button"
-                      onClick={() =>
-                        onDelete(id)
-                      }
-                    >
-                      Delete
-                    </button>
-
+                      <button
+                        className="delete-resource-button"
+                        onClick={() =>
+                          onDelete(id)
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
 
                 </tr>
@@ -2143,7 +2358,13 @@ export default function Dashboard({ username, onLogout }) {
       {showResourceForm && (
         <ResourceForm
           form={form}
+          isEditing={Boolean(editingResourceId)}
+          uploadingKey={uploadingKey}
           onChange={handleFormChange}
+          onUnitFileChange={handleUnitFileChange}
+          onAddUnitFile={handleAddUnitFile}
+          onRemoveUnitFile={handleRemoveUnitFile}
+          onUploadUnitPdf={handleUploadUnitPdf}
           onSubmit={handleAddResource}
           onClose={() => {
             setShowResourceForm(false);
