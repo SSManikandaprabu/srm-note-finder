@@ -3771,6 +3771,7 @@ export default function App() {
               studentEmail={studentEmail}
               onStudentLogin={() => setShowStudentAuth(true)}
               onOpenPrivateMessages={() => setShowPrivateMessages(true)}
+              onBack={() => setPage("home")}
             />
           </main>
         )}

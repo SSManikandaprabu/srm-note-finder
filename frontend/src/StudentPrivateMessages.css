@@ -289,3 +289,22 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 640px) {
+  .student-private-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+    border-radius: 0;
+    border: none;
+  }
+
+  .student-private-chat__history {
+    flex: 1;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+}

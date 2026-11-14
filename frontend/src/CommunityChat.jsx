@@ -11,6 +11,7 @@ export default function CommunityChat({
   studentEmail: propStudentEmail,
   onStudentLogin,
   onOpenPrivateMessages,
+  onBack,
 }) {
   const studentEmail =
     propStudentEmail ||
@@ -183,6 +184,16 @@ export default function CommunityChat({
     <section className="community-chat">
       <header className="community-chat__header">
         <div className="community-chat__title-group">
+          {onBack && (
+            <button
+              type="button"
+              className="community-chat__mobile-back"
+              onClick={onBack}
+              aria-label="Back to Home"
+            >
+              ← Back
+            </button>
+          )}
           <p className="community-chat__eyebrow">SRM NOTE FINDER • LIVE LOUNGE</p>
           <h2>Student Community</h2>
           <p>Ask doubts, share notes & ideas, or message Admin privately.</p>
