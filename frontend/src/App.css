@@ -2130,23 +2130,94 @@
       }
     }
 
+    .mobile-top-actions,
+    .mobile-bottom-nav {
+      display: none;
+    }
+
     @media (max-width: 650px) {
       .navbar {
-        position: relative;
-        top: 0;
-        flex-direction: column;
-        align-items: stretch;
+        position: sticky;
+        top: 10px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
       }
 
-      .nav-links {
-        justify-content: flex-start;
-        overflow-x: auto;
+      .desktop-nav-links {
+        display: none;
+      }
+
+      .mobile-top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .mobile-bottom-nav {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        z-index: 90;
+        padding: 6px;
+        gap: 4px;
+        background: rgba(10, 15, 29, 0.88);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 18px;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+      }
+
+      .mobile-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        min-height: 46px;
+        padding: 6px 4px;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: 0.2s ease;
+      }
+
+      .mobile-nav-item span {
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .mobile-nav-item small {
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .mobile-nav-item.active {
+        color: var(--accent-primary);
+        background: rgba(34, 211, 238, 0.12);
+      }
+
+      .app-content {
+        padding-bottom: 84px;
+      }
+
+      .drive-link,
+      .back-button {
+        min-height: 44px;
       }
 
       .customizer {
-        right: 16px;
-        top: 150px;
-        width: 250px;
+        right: 14px;
+        top: auto;
+        bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+        width: min(280px, calc(100vw - 28px));
       }
 
       .hero {

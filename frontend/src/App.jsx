@@ -3429,7 +3429,7 @@ export default function App() {
             </span>
           </button>
 
-          <div className="nav-links">
+          <div className="nav-links desktop-nav-links">
           <button
             className={navButton(
               page === "home"
@@ -3536,6 +3536,41 @@ export default function App() {
                 onClick={openAdmin}
               >
                 Admin
+              </button>
+            )}
+          </div>
+          <div className="mobile-top-actions">
+            <button
+              className="nav-button appearance-toggle-btn"
+              onClick={() => setCustomizerOpen((previous) => !previous)}
+              aria-label="Appearance"
+            >
+              ✨
+            </button>
+            {studentEmail ? (
+              <button
+                className="nav-button"
+                onClick={() => setShowPrivateMessages(true)}
+                aria-label="Messages"
+                style={{
+                  background: "rgba(56, 189, 248, 0.12)",
+                  color: "#38bdf8",
+                  borderColor: "rgba(56, 189, 248, 0.3)",
+                }}
+              >
+                ✉️
+              </button>
+            ) : (
+              <button
+                className="nav-button"
+                onClick={() => setShowStudentAuth(true)}
+                style={{
+                  background: "linear-gradient(110deg, rgba(34, 211, 238, 0.15), rgba(167, 139, 250, 0.15))",
+                  borderColor: "rgba(34, 211, 238, 0.35)",
+                  color: "#f8fafc",
+                }}
+              >
+                Sign In
               </button>
             )}
           </div>
@@ -3809,6 +3844,55 @@ export default function App() {
             onClose={() => setPdfViewerTarget(null)}
           />
         </Suspense>
+      )}
+
+      {page !== "community" && page !== "admin" && page !== "admin-login" && (
+        <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
+          <button
+            type="button"
+            className={`mobile-nav-item ${page === "home" || page === "semester" || page === "subject" ? "active" : ""}`}
+            onClick={goHome}
+          >
+            <span>🏠</span>
+            <small>Home</small>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-nav-item ${page === "search" ? "active" : ""}`}
+            onClick={openSearch}
+          >
+            <span>🔍</span>
+            <small>Search</small>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-nav-item ${page === "gpa" ? "active" : ""}`}
+            onClick={openGpa}
+          >
+            <span>🧮</span>
+            <small>GPA+</small>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-nav-item ${page === "community" ? "active" : ""}`}
+            onClick={() => setPage("community")}
+          >
+            <span>💬</span>
+            <small>Chat</small>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-nav-item appearance-toggle-btn ${customizerOpen ? "active" : ""}`}
+            onClick={() => setCustomizerOpen((previous) => !previous)}
+          >
+            <span>✨</span>
+            <small>Theme</small>
+          </button>
+        </nav>
       )}
 
       {/* =====================================================
