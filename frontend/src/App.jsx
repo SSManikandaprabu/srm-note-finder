@@ -662,6 +662,20 @@ export default function App() {
   const [customizerOpen, setCustomizerOpen] =
     useState(false);
 
+  useEffect(() => {
+    if (!customizerOpen) return;
+    function handleOutsideClick(event) {
+      if (
+        !event.target.closest(".customizer") &&
+        !event.target.closest(".appearance-toggle-btn")
+      ) {
+        setCustomizerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [customizerOpen]);
+
   const [theme, setTheme] =
     useState("aurora-cyan");
 
@@ -3390,7 +3404,7 @@ export default function App() {
           </button>
 
           <button
-            className="nav-button"
+            className="nav-button appearance-toggle-btn"
             onClick={() =>
               setCustomizerOpen(
                 (previous) =>
