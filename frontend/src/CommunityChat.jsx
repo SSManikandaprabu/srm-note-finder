@@ -22,7 +22,22 @@ export default function CommunityChat({
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("Connecting...");
   const [recipient, setRecipient] = useState("everyone");
+  const [adminNotice, setAdminNotice] = useState(null);
+  const [isSendingAdmin, setIsSendingAdmin] = useState(false);
   const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (studentEmail && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, studentEmail]);
+
+  useEffect(() => {
+    if (!adminNotice) return;
+    const timer = setTimeout(() => setAdminNotice(null), 4500);
+    return () => clearTimeout(timer);
+  }, [adminNotice]);
 
   useEffect(() => {
     const token = localStorage.getItem("srm-student-token");
@@ -92,7 +107,8 @@ export default function CommunityChat({
 
     if (recipient === "admin") {
       try {
-        await fetch(`${API_BASE}/api/private-chat/messages`, {
+        setIsSendingAdmin(true);
+        const res = await fetch(`${API_BASE}/api/private-chat/messages`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -100,11 +116,22 @@ export default function CommunityChat({
           },
           body: JSON.stringify({ text }),
         });
+        if (!res.ok) {
+          throw new Error("Failed to deliver private message");
+        }
         setMessage("");
-        alert("Your private message was sent securely to the Admin!");
+        setAdminNotice({
+          type: "success",
+          text: "Private message delivered securely to Admin.",
+        });
       } catch (err) {
         console.error("Private message send error:", err);
-        alert("Failed to send message to admin. Please try again.");
+        setAdminNotice({
+          type: "error",
+          text: "Could not send message to Admin. Please try again.",
+        });
+      } finally {
+        setIsSendingAdmin(false);
       }
       return;
     }
@@ -120,16 +147,77 @@ export default function CommunityChat({
     setMessage("");
   }
 
+  const isConnected = status.toLowerCase().includes("connected") && !status.toLowerCase().includes("dis");
+  const isLocked = status.toLowerCase().includes("sign in");
+  const statusClass = isConnected
+    ? "community-chat__status--connected"
+    : isLocked
+      ? "community-chat__status--locked"
+      : "community-chat__status--offline";
+
+  const getInitials = (name = "Student") => {
+    const parts = String(name).trim().split(/[\s._-]+/).filter(Boolean);
+    if (parts.length === 0) return "ST";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
+  const getAvatarHue = (name = "") => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i += 1) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % 5;
+  };
+
+  const formatTime = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const emailHandle = studentEmail ? studentEmail.split("@")[0].toLowerCase() : "";
+
   return (
     <section className="community-chat">
       <header className="community-chat__header">
-        <div>
-          <p className="community-chat__eyebrow">SRM NOTE FINDER</p>
+        <div className="community-chat__title-group">
+          <p className="community-chat__eyebrow">SRM NOTE FINDER • LIVE LOUNGE</p>
           <h2>Student Community</h2>
-          <p>Ask doubts, share ideas, and help fellow students.</p>
+          <p>Ask doubts, share notes & ideas, or message Admin privately.</p>
         </div>
-        <span className="community-chat__status">{status}</span>
+        <div className="community-chat__header-meta">
+          {studentEmail && messages.length > 0 && (
+            <span className="community-chat__count-pill">
+              {messages.length} {messages.length === 1 ? "message" : "messages"}
+            </span>
+          )}
+          <span className={`community-chat__status ${statusClass}`}>
+            <span className="community-chat__status-dot" aria-hidden="true" />
+            {status}
+          </span>
+        </div>
       </header>
+
+      {adminNotice && (
+        <div
+          className={`community-chat__toast community-chat__toast--${adminNotice.type}`}
+          role="status"
+        >
+          <span>{adminNotice.type === "success" ? "✓" : "!"}</span>
+          <span>{adminNotice.text}</span>
+          {adminNotice.type === "success" && onOpenPrivateMessages && (
+            <button
+              type="button"
+              className="community-chat__toast-link"
+              onClick={onOpenPrivateMessages}
+            >
+              Open Inbox →
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="community-chat__messages">
         {!studentEmail ? (
@@ -246,20 +334,58 @@ export default function CommunityChat({
           </div>
         ) : messages.length === 0 ? (
           <div className="community-chat__empty">
-            <span>💬</span>
-            <h3>Your community starts here</h3>
-            <p>Messages will appear here when community messaging is enabled.</p>
+            <div className="community-chat__empty-icon">💬</div>
+            <h3>Start the conversation</h3>
+            <p>Be the first to ask a doubt, share a study tip, or say hello.</p>
           </div>
         ) : (
-          messages.map((item, index) => (
-            <article
-              className="community-chat__message"
-              key={item.id || item._id || index}
-            >
-              <strong>{item.senderName || "Student"}</strong>
-              <p>{item.text}</p>
-            </article>
-          ))
+          <>
+            {messages.map((item, index) => {
+              const senderName = item.senderName || "Student";
+              const isSelf = Boolean(
+                studentEmail &&
+                  ((item.senderEmail &&
+                    item.senderEmail.toLowerCase() === studentEmail.toLowerCase()) ||
+                    senderName.toLowerCase() === emailHandle)
+              );
+              const timestamp = formatTime(item.createdAt || item.timestamp);
+              const hue = getAvatarHue(senderName);
+
+              return (
+                <div
+                  className={`community-chat__message-row ${
+                    isSelf
+                      ? "community-chat__message-row--self"
+                      : "community-chat__message-row--other"
+                  }`}
+                  key={item.id || item._id || index}
+                >
+                  {!isSelf && (
+                    <div
+                      className={`community-chat__avatar community-chat__avatar--tone-${hue}`}
+                      aria-hidden="true"
+                    >
+                      {getInitials(senderName)}
+                    </div>
+                  )}
+                  <article
+                    className={`community-chat__message ${
+                      isSelf ? "community-chat__message--self" : ""
+                    }`}
+                  >
+                    <div className="community-chat__message-meta">
+                      <strong>{isSelf ? "You" : senderName}</strong>
+                      {timestamp && (
+                        <time className="community-chat__time">{timestamp}</time>
+                      )}
+                    </div>
+                    <p>{item.text}</p>
+                  </article>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 
@@ -267,6 +393,15 @@ export default function CommunityChat({
         <div className="community-chat__login">
           <div className="community-chat__signed-in">
             <span>Signed in as {studentEmail}</span>
+            {onOpenPrivateMessages && (
+              <button
+                type="button"
+                className="community-chat__inbox-btn"
+                onClick={onOpenPrivateMessages}
+              >
+                🔒 Private Inbox
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -276,49 +411,22 @@ export default function CommunityChat({
           className="community-chat__composer"
           onSubmit={sendMessage}
         >
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px",
-              borderRadius: "10px",
-              background: "rgba(15, 23, 42, 0.8)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              flexShrink: 0,
-            }}
-          >
+          <div className="community-chat__recipient-toggle" role="group" aria-label="Message recipient">
             <button
               type="button"
               onClick={() => setRecipient("everyone")}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontWeight: "700",
-                cursor: "pointer",
-                border: "none",
-                background: recipient === "everyone" ? "linear-gradient(135deg, #06b6d4, #3b82f6)" : "transparent",
-                color: recipient === "everyone" ? "#ffffff" : "#94a3b8",
-                transition: "all 0.2s ease",
-              }}
+              className={`community-chat__recipient-btn ${
+                recipient === "everyone" ? "is-active-everyone" : ""
+              }`}
             >
               👥 Everyone
             </button>
             <button
               type="button"
               onClick={() => setRecipient("admin")}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                fontSize: "12px",
-                fontWeight: "700",
-                cursor: "pointer",
-                border: "none",
-                background: recipient === "admin" ? "linear-gradient(135deg, #8b5cf6, #ec4899)" : "transparent",
-                color: recipient === "admin" ? "#ffffff" : "#94a3b8",
-                transition: "all 0.2s ease",
-              }}
+              className={`community-chat__recipient-btn ${
+                recipient === "admin" ? "is-active-admin" : ""
+              }`}
             >
               🔒 Admin
             </button>
@@ -340,9 +448,16 @@ export default function CommunityChat({
 
           <button
             type="submit"
-            disabled={!message.trim()}
+            className={`community-chat__send-btn ${
+              recipient === "admin" ? "community-chat__send-btn--admin" : ""
+            }`}
+            disabled={!message.trim() || isSendingAdmin}
           >
-            {recipient === "admin" ? "Send to Admin" : "Send"}
+            {isSendingAdmin
+              ? "Sending..."
+              : recipient === "admin"
+                ? "Send to Admin"
+                : "Send"}
           </button>
         </form>
       ) : (
