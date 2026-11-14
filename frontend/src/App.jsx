@@ -3871,66 +3871,18 @@ export default function App() {
 
       {showPrivateMessages && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(5, 7, 12, 0.75)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            zIndex: 2000,
-            display: "grid",
-            placeItems: "center",
-            padding: "16px",
-          }}
+          className="student-private-modal-backdrop"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowPrivateMessages(false);
             }
           }}
         >
-          <div
-            style={{
-              width: "min(520px, 94vw)",
-              maxHeight: "86vh",
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={() => setShowPrivateMessages(false)}
-              aria-label="Close private messages"
-              style={{
-                position: "absolute",
-                top: "14px",
-                right: "14px",
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#94a3b8",
-                width: "32px",
-                height: "32px",
-                borderRadius: "10px",
-                cursor: "pointer",
-                zIndex: 10,
-                display: "grid",
-                placeItems: "center",
-                fontSize: "16px",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#fff";
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.18)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#94a3b8";
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
-              }}
-            >
-              ✕
-            </button>
+          <div className="student-private-modal-shell">
             <StudentPrivateMessages
               studentToken={studentToken}
               studentEmail={studentEmail}
+              onBack={() => setShowPrivateMessages(false)}
             />
           </div>
         </div>

@@ -93,7 +93,17 @@ export default function CommunityChat({
     });
 
     socket.on("chat:error", (error) => {
-      setStatus(error?.message || "Chat error");
+      setAdminNotice({
+        type: "error",
+        text: error?.message || "Message blocked by moderation.",
+      });
+    });
+
+    socket.on("chat:warning", (warning) => {
+      setAdminNotice({
+        type: "error",
+        text: warning?.message || "Please keep community chat respectful.",
+      });
     });
 
     socket.on("community:history", (history) => {
@@ -210,6 +220,12 @@ export default function CommunityChat({
             return previous;
           }
           return [...previous, data.message];
+        });
+      }
+      if (data.warning) {
+        setAdminNotice({
+          type: "error",
+          text: data.warning,
         });
       }
       setStatus("Connected");

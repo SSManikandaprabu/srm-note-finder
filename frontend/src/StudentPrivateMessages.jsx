@@ -6,7 +6,11 @@ import "./StudentPrivateMessages.css";
 const API_BASE =
   (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
-export default function StudentPrivateMessages({ studentToken, studentEmail }) {
+export default function StudentPrivateMessages({
+  studentToken,
+  studentEmail,
+  onBack,
+}) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -110,6 +114,15 @@ export default function StudentPrivateMessages({ studentToken, studentEmail }) {
     <section className="student-private-chat">
       <header className="student-private-chat__header">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              className="student-private-chat__back"
+              onClick={onBack}
+            >
+              ← Back
+            </button>
+          )}
           <span className="student-private-chat__eyebrow">
             SECURE STUDENT INBOX
           </span>

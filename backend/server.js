@@ -1987,6 +1987,42 @@ async function createCommunityMessage(token, rawText) {
   }
 
   if (settings.spamDetectionEnabled !== false) {
+    // Serverless-safe DB flood & duplicate check (last 10s / last 2 messages)
+    const tenSecondsAgo = new Date(Date.now() - 10 * 1000);
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const recentMsgs = await ChatMessage.find({
+      type: "community",
+      senderId: student._id.toString(),
+      createdAt: { $gte: twoMinutesAgo },
+    })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .select("text createdAt")
+      .lean();
+
+    const burstCount = recentMsgs.filter(
+      (m) => new Date(m.createdAt) >= tenSecondsAgo
+    ).length;
+
+    if (burstCount >= 5) {
+      return {
+        status: 429,
+        error: "Message flooding detected. Please wait a few moments before sending again.",
+      };
+    }
+
+    const normalizedCurrent = text.toLowerCase();
+    if (
+      recentMsgs.length >= 2 &&
+      recentMsgs[0].text.trim().toLowerCase() === normalizedCurrent &&
+      recentMsgs[1].text.trim().toLowerCase() === normalizedCurrent
+    ) {
+      return {
+        status: 429,
+        error: "Duplicate message spam detected. Please do not repeatedly send identical messages.",
+      };
+    }
+
     const spamCheck = checkSpam(student._id.toString(), text);
     if (spamCheck.isSpam) {
       if (spamCheck.shouldBlock) {
@@ -2015,6 +2051,12 @@ async function createCommunityMessage(token, rawText) {
   let processedText = text;
   let warning = null;
   if (moderationResult.containsAbuse) {
+    if (moderationResult.severity === "critical") {
+      return {
+        status: 400,
+        error: "Your message was blocked because it violates community safety guidelines.",
+      };
+    }
     const action = settings.abusiveWordAction || "mask";
     if (action === "reject") {
       return {
