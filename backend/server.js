@@ -1867,31 +1867,6 @@ setInterval(async () => {
   }
 }, 7 * 24 * 60 * 60 * 1000);
 
-// ===============================
-// 404
-// ===============================
-
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
-
-// ===============================
-// ERROR HANDLER
-// ===============================
-
-app.use((error, req, res, next) => {
-  console.error("Server error:", error);
-
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: error.message,
-  });
-});
-
 async function getChatSettings() {
   let settings = await Settings.findOne();
   if (!settings) {
@@ -2136,6 +2111,31 @@ app.post("/api/community/messages", async (req, res) => {
     console.error("Community REST send error:", error.message);
     return res.status(500).json({ success: false, message: "Unable to send your message." });
   }
+});
+
+// ===============================
+// 404
+// ===============================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// ===============================
+// ERROR HANDLER
+// ===============================
+
+app.use((error, req, res, next) => {
+  console.error("Server error:", error);
+
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    error: error.message,
+  });
 });
 
 // ===============================
