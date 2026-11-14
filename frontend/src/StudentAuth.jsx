@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import "./StudentAuth.css";
 
@@ -11,10 +11,44 @@ export default function StudentAuth({ onLogin, onClose }) {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  async function handleResendCode() {
+    if (resendCooldown > 0 || loading) return;
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      const endpoint =
+        mode === "reset"
+          ? `${API_BASE}/api/student-auth/forgot-password`
+          : `${API_BASE}/api/student-auth/resend-verification`;
+      const response = await axios.post(endpoint, {
+        email: email.trim().toLowerCase(),
+      });
+      setNotice(response.data.message || "A new 6-digit code was sent to your SRM email.");
+      setResendCooldown(30);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Could not resend code. Please wait a moment."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -182,43 +216,69 @@ export default function StudentAuth({ onLogin, onClose }) {
                 />
               </label>
 
-              {mode === "verify" && (
+              <div className="student-auth-code-actions">
+                {mode === "verify" ? (
+                  <button
+                    type="button"
+                    className="student-auth-text-button"
+                    onClick={() => {
+                      setMode("register");
+                      setNotice("");
+                      setError("");
+                    }}
+                  >
+                    Back to registration
+                  </button>
+                ) : (
+                  <span />
+                )}
+
                 <button
                   type="button"
                   className="student-auth-text-button"
-                  onClick={() => {
-                    setMode("register");
-                    setNotice("");
-                    setError("");
-                  }}
+                  disabled={resendCooldown > 0 || loading}
+                  onClick={handleResendCode}
                 >
-                  Back to registration
+                  {resendCooldown > 0
+                    ? `Resend code (${resendCooldown}s)`
+                    : "Resend code"}
                 </button>
-              )}
+              </div>
             </>
           )}
 
           {(mode === "login" || mode === "register" || mode === "reset") && (
             <label>
               {mode === "reset" ? "New password" : "Password"}
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={
-                  mode === "register" || mode === "reset"
-                    ? "At least 10 characters"
-                    : "Your password"
-                }
-                minLength={mode === "register" || mode === "reset" ? 10 : undefined}
-                maxLength={128}
-                autoComplete={
-                  mode === "register" || mode === "reset"
-                    ? "new-password"
-                    : "current-password"
-                }
-                required
-              />
+              <div className="student-auth-password-wrap">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={
+                    mode === "register" || mode === "reset"
+                      ? "At least 10 characters"
+                      : "Your password"
+                  }
+                  minLength={mode === "register" || mode === "reset" ? 10 : undefined}
+                  maxLength={128}
+                  autoComplete={
+                    mode === "register" || mode === "reset"
+                      ? "new-password"
+                      : "current-password"
+                  }
+                  required
+                />
+                <button
+                  type="button"
+                  className="student-auth-eye-btn"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
             </label>
           )}
 

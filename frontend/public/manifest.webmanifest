@@ -1,0 +1,18 @@
+{
+  "name": "SRM Note Finder",
+  "short_name": "SRM Notes",
+  "description": "Semester notes, PYQs, GPA calculator, and student community for SRM students.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

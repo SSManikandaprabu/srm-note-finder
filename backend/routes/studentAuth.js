@@ -213,6 +213,62 @@ await student.save();
   }
 });
 
+router.post("/resend-verification", emailLimiter, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+
+    if (!validCollegeEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Use an email ending in @srmist.edu.in.",
+      });
+    }
+
+    const student = await StudentAuth.findOne({ email });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "No pending registration found for this email. Please create an account.",
+      });
+    }
+
+    if (student.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified. Please sign in.",
+      });
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const { transporter, from } = createTransporter();
+
+    student.verificationCodeHash = hashCode(code);
+    student.verificationAttempts = 0;
+    student.verificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await student.save();
+
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject: "SRM Note Finder email verification",
+      text: `Your new verification code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    });
+
+    return res.json({
+      success: true,
+      message: "A new 6-digit verification code has been sent to your SRM email.",
+    });
+  } catch (error) {
+    console.error("Resend verification error:", error.message);
+
+    return res.status(503).json({
+      success: false,
+      message: "Could not resend verification code right now.",
+    });
+  }
+});
+
 router.post("/login", loginLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);

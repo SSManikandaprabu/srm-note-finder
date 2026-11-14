@@ -205,6 +205,53 @@
   font-size: 12.5px;
 }
 
+.student-auth-code-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.student-auth-code-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.student-auth-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.student-auth-password-wrap input {
+  padding-right: 44px;
+}
+
+.student-auth-eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.student-auth-eye-btn:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #f8fafc;
+}
+
 @keyframes authFadeIn {
   from {
     opacity: 0;

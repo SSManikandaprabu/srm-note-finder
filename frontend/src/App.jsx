@@ -675,7 +675,15 @@ function navButton(active) {
 ========================================================= */
 
 export default function App() {
-  const [page, setPage] = useState("home");
+  const [page, setPage] = useState(() => {
+    try {
+      const param = new URLSearchParams(window.location.search).get("page");
+      return param === "gpa" ? "gpa" : "home";
+    } catch {
+      return "home";
+    }
+  });
+  const [gpaShareStatus, setGpaShareStatus] = useState("");
 
   const [selectedSemester, setSelectedSemester] =
     useState(null);
@@ -2193,13 +2201,76 @@ export default function App() {
       );
     }
 
+    async function handleShareGpa(type = "GPA & CGPA") {
+      const shareUrl = `${window.location.origin}/?page=gpa`;
+      const shareText = `Check and calculate your SRM ${type} here on SRM Note Finder:`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `SRM ${type} Calculator`,
+            text: shareText,
+            url: shareUrl,
+          });
+          setGpaShareStatus("Shared!");
+          setTimeout(() => setGpaShareStatus(""), 2500);
+          return;
+        } catch (err) {
+          if (err?.name === "AbortError") return;
+        }
+      }
+
+      try {
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        setGpaShareStatus("Link copied! Share it with your friends.");
+      } catch {
+        setGpaShareStatus(shareUrl);
+      }
+      setTimeout(() => setGpaShareStatus(""), 3000);
+    }
+
     return (
       <main className="page-container">
-        <SectionHeading
-          eyebrow="GPA+"
-          title="Calculate your GPA"
-          description="Calculate SGPA and keep track of your semester GPA."
-        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginBottom: "8px",
+          }}
+        >
+          <SectionHeading
+            eyebrow="GPA+"
+            title="Calculate your GPA"
+            description="Calculate SGPA and keep track of your semester GPA."
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
+            <button
+              type="button"
+              onClick={() => handleShareGpa("SGPA & CGPA")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 16px",
+                borderRadius: "12px",
+                border: "1px solid rgba(103, 232, 249, 0.35)",
+                background: "linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.22))",
+                color: "#e0f2fe",
+                fontSize: "13px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(6, 182, 212, 0.16)",
+              }}
+            >
+              <span>🔗</span>
+              <span>{gpaShareStatus || "Share GPA & CGPA Calculator"}</span>
+            </button>
+          </div>
+        </div>
 
         <div className="gpa-layout">
           <div className="gpa-panel">
@@ -2401,10 +2472,26 @@ export default function App() {
               )}
             </div>
 
-            <div className="no-link">
-              CGPA is calculated as the
-              average of the entered
-              semester GPAs.
+            <div className="no-link" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+              <span>
+                CGPA is calculated as the average of the entered semester GPAs.
+              </span>
+              <button
+                type="button"
+                onClick={() => handleShareGpa("CGPA")}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid rgba(103, 232, 249, 0.32)",
+                  background: "rgba(34, 211, 238, 0.12)",
+                  color: "#67e8f9",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                }}
+              >
+                📤 Share CGPA Link
+              </button>
             </div>
           </div>
         </div>

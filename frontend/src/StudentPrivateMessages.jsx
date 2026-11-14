@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import "./StudentPrivateMessages.css";
 
@@ -12,6 +12,13 @@ export default function StudentPrivateMessages({ studentToken, studentEmail }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const authHeaders = {
     headers: {
@@ -121,31 +128,48 @@ export default function StudentPrivateMessages({ studentToken, studentEmail }) {
           </p>
         ) : messages.length === 0 ? (
           <div className="student-private-chat__empty">
-            <span>✉️</span>
+            <div className="student-private-chat__empty-icon">✉️</div>
             <h3>Your private inbox is ready</h3>
-            <p>Messages from the SRM Note Finder admin will appear here.</p>
+            <p>Messages with the SRM Note Finder admin will appear here.</p>
           </div>
         ) : (
-          messages.map((item, index) => (
-            <article
-              className={`student-private-chat__message ${
-                item.senderId === "admin" ? "from-admin" : "from-student"
-              }`}
-              key={item._id || index}
-            >
-              <strong>
-                {item.senderId === "admin"
-                  ? "SRM Note Finder Admin"
-                  : "You"}
-              </strong>
-              <p>{item.text}</p>
-              <time>
-                {item.createdAt
-                  ? new Date(item.createdAt).toLocaleString()
-                  : ""}
-              </time>
-            </article>
-          ))
+          <>
+            {messages.map((item, index) => {
+              const fromAdmin = item.senderId === "admin";
+              const timeLabel = item.createdAt
+                ? new Date(item.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "";
+              return (
+                <div
+                  className={`student-private-chat__row ${
+                    fromAdmin ? "is-admin" : "is-student"
+                  }`}
+                  key={item._id || index}
+                >
+                  {fromAdmin && (
+                    <div className="student-private-chat__avatar" aria-hidden="true">
+                      AD
+                    </div>
+                  )}
+                  <article
+                    className={`student-private-chat__message ${
+                      fromAdmin ? "from-admin" : "from-student"
+                    }`}
+                  >
+                    <div className="student-private-chat__meta">
+                      <strong>{fromAdmin ? "SRM Admin" : "You"}</strong>
+                      {timeLabel && <time>{timeLabel}</time>}
+                    </div>
+                    <p>{item.text}</p>
+                  </article>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
 

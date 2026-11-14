@@ -20,8 +20,18 @@ export default function PrivateMessagesPage() {
   const [blockScope, setBlockScope] = useState("all_chat");
   const [blockReason, setBlockReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [studentQuery, setStudentQuery] = useState("");
 
   const messagesEndRef = useRef(null);
+
+  const filteredStudents = students.filter((student) => {
+    const q = studentQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (student.username || "").toLowerCase().includes(q) ||
+      (student.email || "").toLowerCase().includes(q)
+    );
+  });
 
   function getAuthHeaders() {
     const token = localStorage.getItem("srm-admin-token");
@@ -200,18 +210,31 @@ export default function PrivateMessagesPage() {
 
       <div className="private-chat-layout">
         <aside className="private-chat-students">
-          <h2>Verified Students</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <h2 style={{ margin: 0 }}>Verified Students</h2>
+            <span className="private-chat-badge">{students.length}</span>
+          </div>
+
+          <input
+            type="search"
+            className="private-chat-student-search"
+            value={studentQuery}
+            onChange={(e) => setStudentQuery(e.target.value)}
+            placeholder="Search name or email..."
+            aria-label="Search verified students"
+          />
 
           {loadingStudents ? (
             <p className="private-chat-muted">Loading students...</p>
-          ) : students.length === 0 ? (
+          ) : filteredStudents.length === 0 ? (
             <p className="private-chat-muted">
-              No verified students yet. A student must register and verify their
-              @srmist.edu.in email first.
+              {studentQuery.trim()
+                ? "No students match your search."
+                : "No verified students yet. A student must register and verify their @srmist.edu.in email first."}
             </p>
           ) : (
             <div className="private-chat-student-list">
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <button
                   key={student._id}
                   type="button"
