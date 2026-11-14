@@ -34,9 +34,9 @@ Browse semesters and subjects, organize unit-wise study materials, access previo
 
 | Academic & Student Features | Platform & Admin Features |
 | :--- | :--- |
-| **📚 Academic Resource Hub**<br>• Semester-wise and subject-wise organization<br>• Unit-wise study material navigation<br>• Previous-year question paper (PYQ) links | **🔐 Student Authentication**<br>• Student registration and login<br>• Email verification integration<br>• JWT token-based authentication & hashing |
-| **🧮 GPA & Academic Tools**<br>• SGPA calculation<br>• CGPA calculation<br>• Grade-point based result entry | **💬 Student Communication**<br>• Real-time community chat with Socket.IO<br>• Private messaging & moderation controls |
-| **🎨 Modern Experience**<br>• Multiple visual themes & responsive layout<br>• Separate student and admin experiences | **🛠️ Admin Portal**<br>• Separate administration frontend (`admin/`)<br>• Resource, subject, unit, and PYQ management |
+| **📚 Academic Resource Hub (150+ Resources)**<br>• Semester-wise & subject-wise organization<br>• Built-in **PDF.js** in-browser study viewer<br>• Direct subject share links & PYQ archive<br>• Open guest browsing (no login wall for notes) | **🔐 Student Authentication**<br>• `@srmist.edu.in` email OTP verification<br>• JWT token-based sessions & bcrypt hashing<br>• Forgot-password OTP reset flow |
+| **🧮 GPA & Academic Tools**<br>• SGPA calculation<br>• CGPA calculation<br>• Grade-point based result entry | **💬 Real-Time Student Communication**<br>• Dual-transport chat (Socket.IO + REST polling fallback)<br>• Private messaging with mobile back navigation<br>• Serverless DB-backed spam & abuse protection |
+| **🎨 Modern Experience**<br>• Multiple visual themes & responsive layout<br>• Separate student and admin experiences | **🛠️ Mobile-Ready Admin Portal**<br>• Dedicated administration frontend (`admin/`)<br>• Slide-over mobile navigation drawer<br>• Resource, subject, unit, and PYQ management |
 
 ---
 
