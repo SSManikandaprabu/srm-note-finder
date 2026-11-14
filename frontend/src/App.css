@@ -12,7 +12,7 @@
       --panel-strong: rgba(15, 23, 42, .94);
       --border: rgba(255,255,255,.09);
       --text: #f8fafc;
-      --muted: #94a3b8;
+      --muted: #cbd5e1;
       --danger: #fb7185;
       --success: #34d399;
     }
@@ -896,7 +896,7 @@
     }
 
     .semester-card-content > span {
-      color: #64748b;
+      color: #cbd5e1;
       font-size: 8px;
       font-weight: 900;
       letter-spacing: .15em;
@@ -905,11 +905,12 @@
     .semester-card h3 {
       margin: 4px 0;
       font-size: 15px;
+      color: #f8fafc;
     }
 
     .semester-card p {
       margin: 0;
-      color: #64748b;
+      color: #cbd5e1;
       font-size: 10px;
     }
 
@@ -994,7 +995,7 @@
     }
 
     .subject-sem {
-      color: #64748b;
+      color: #cbd5e1;
       font-size: 8px;
       font-weight: 900;
       letter-spacing: .1em;
@@ -1002,7 +1003,7 @@
 
     .subject-card h3 {
       margin: 9px 0 18px;
-
+      color: #f8fafc;
       font-size: 14px;
       line-height: 1.45;
     }

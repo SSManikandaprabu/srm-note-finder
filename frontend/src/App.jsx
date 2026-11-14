@@ -1345,7 +1345,7 @@ export default function App() {
   const glowMultipliers = {
     low: 0.1,
     medium: 0.22,
-    high: 0.45,
+    high: 0.34,
   };
 
   const currentGlowAlpha = glowMultipliers[glowIntensity] || 0.22;
