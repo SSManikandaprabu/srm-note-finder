@@ -1480,11 +1480,37 @@ function resolveResourcePdfTarget(resource, query) {
   return { title: resource.title || "Document", url: resource.driveUrl || resource.link || resource.url || "" };
 }
 
-function extractDriveFileId(url) {
-  const match =
-    String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
-    String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : null;
+function getGoogleEmbedUrl(url) {
+  const str = String(url || "");
+
+  const presentationMatch = str.match(/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+  if (presentationMatch) {
+    return `https://docs.google.com/presentation/d/${presentationMatch[1]}/preview`;
+  }
+
+  const documentMatch = str.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (documentMatch) {
+    return `https://docs.google.com/document/d/${documentMatch[1]}/preview`;
+  }
+
+  const sheetMatch = str.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetMatch) {
+    return `https://docs.google.com/spreadsheets/d/${sheetMatch[1]}/preview`;
+  }
+
+  const folderMatch = str.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/);
+  if (folderMatch) {
+    return `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}#list`;
+  }
+
+  const fileMatch =
+    str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+    str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (fileMatch) {
+    return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+  }
+
+  return null;
 }
 
 app.get("/api/resources/:id/pdf-meta", async (req, res) => {
@@ -1499,13 +1525,13 @@ app.get("/api/resources/:id/pdf-meta", async (req, res) => {
       return res.status(404).json({ success: false, message: "PDF not found for this unit" });
     }
 
-    const driveId = extractDriveFileId(url);
-    if (driveId) {
+    const googleEmbedUrl = getGoogleEmbedUrl(url);
+    if (googleEmbedUrl) {
       return res.json({
         success: true,
         title,
         mode: "drive-preview",
-        embedUrl: `https://drive.google.com/file/d/${driveId}/preview`,
+        embedUrl: googleEmbedUrl,
       });
     }
 
@@ -1550,13 +1576,8 @@ app.get("/api/resources/:id/pdf-stream", async (req, res) => {
       return fs.createReadStream(filePath).pipe(res);
     }
 
-    // Case 2: External PDF URL (or Drive direct download fallback)
-    const driveId = extractDriveFileId(url);
-    const fetchUrl = driveId
-      ? `https://drive.google.com/uc?export=download&id=${driveId}`
-      : url;
-
-    const upstream = await fetch(fetchUrl, { redirect: "follow" });
+    // Case 2: External PDF URL
+    const upstream = await fetch(url, { redirect: "follow" });
     if (!upstream.ok) {
       return res.status(502).json({ success: false, message: "Unable to fetch PDF from source" });
     }
@@ -1566,7 +1587,8 @@ app.get("/api/resources/:id/pdf-stream", async (req, res) => {
       return res.status(415).json({
         success: false,
         message: "Source did not return raw PDF bytes",
-        fallbackMode: driveId ? "drive-preview" : "external",
+        fallbackMode: "external",
+        embedUrl: url,
       });
     }
 

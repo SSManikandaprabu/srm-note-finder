@@ -85,9 +85,9 @@ export default function PdfViewerModal({
 
         if (!streamRes.ok) {
           const errJson = await streamRes.json().catch(() => ({}));
-          if (errJson.fallbackMode === "drive-preview" && metaData.embedUrl) {
+          if (errJson.embedUrl || (errJson.fallbackMode === "drive-preview" && metaData.embedUrl)) {
             setMode("drive-preview");
-            setEmbedUrl(metaData.embedUrl);
+            setEmbedUrl(errJson.embedUrl || metaData.embedUrl);
             setLoading(false);
             return;
           }
