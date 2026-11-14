@@ -263,6 +263,7 @@ function ResourceForm({
 
 export default function Dashboard({ username, onLogout }) {
   const [activePage, setActivePage] = useState("Overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [resources, setResources] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2000,8 +2001,15 @@ export default function Dashboard({ username, onLogout }) {
 
   return (
     <div className="dashboard">
+      {mobileMenuOpen && (
+        <div
+          className="dashboard-sidebar-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-      <aside className="dashboard-sidebar">
+      <aside className={`dashboard-sidebar ${mobileMenuOpen ? "is-open" : ""}`}>
 
         <div className="sidebar-brand">
 
@@ -2021,7 +2029,7 @@ export default function Dashboard({ username, onLogout }) {
           MAIN MENU
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" onClick={() => setMobileMenuOpen(false)}>
 
           <button
             className={`sidebar-item ${
@@ -2155,7 +2163,7 @@ export default function Dashboard({ username, onLogout }) {
           SYSTEM
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" onClick={() => setMobileMenuOpen(false)}>
 
           <button
             className={`sidebar-item ${
@@ -2336,6 +2344,14 @@ export default function Dashboard({ username, onLogout }) {
         <header className="dashboard-topbar">
 
           <div className="topbar-left">
+            <button
+              type="button"
+              className="topbar-menu-btn"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle navigation menu"
+            >
+              ☰
+            </button>
 
             <div className="topbar-mobile-logo">
               S
