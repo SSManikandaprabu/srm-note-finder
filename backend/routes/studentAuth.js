@@ -273,6 +273,131 @@ router.post("/login", loginLimiter, async (req, res) => {
   }
 });
 
+router.post("/forgot-password", emailLimiter, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+
+    if (!validCollegeEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Use an email ending in @srmist.edu.in.",
+      });
+    }
+
+    const student = await StudentAuth.findOne({ email });
+
+    if (!student || !student.emailVerified) {
+      return res.json({
+        success: true,
+        message: "If an account exists for that SRM email, a 6-digit reset code has been sent.",
+      });
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const { transporter, from } = createTransporter();
+
+    student.resetCodeHash = hashCode(code);
+    student.resetAttempts = 0;
+    student.resetExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await student.save();
+
+    await transporter.sendMail({
+      from,
+      to: email,
+      subject: "SRM Note Finder password reset",
+      text: `Your password reset code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    });
+
+    return res.json({
+      success: true,
+      message: "Reset code sent to your SRM email.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error.message);
+
+    return res.status(503).json({
+      success: false,
+      message: "Could not send reset code right now. Please try again later.",
+    });
+  }
+});
+
+router.post("/reset-password", emailLimiter, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+    const newPassword = req.body?.newPassword;
+
+    if (!validCollegeEmail(email) || !/^\d{6}$/.test(code)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid college email and six-digit reset code.",
+      });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 10 || newPassword.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be 10–128 characters long.",
+      });
+    }
+
+    const student = await StudentAuth.findOne({ email })
+      .select("+resetCodeHash +resetExpiresAt +resetAttempts");
+
+    if (
+      !student ||
+      !student.emailVerified ||
+      !student.resetCodeHash ||
+      !student.resetExpiresAt ||
+      student.resetExpiresAt.getTime() < Date.now() ||
+      student.resetAttempts >= 5
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "The reset code is invalid or expired. Request a new code.",
+      });
+    }
+
+    const submittedHash = Buffer.from(hashCode(code), "hex");
+    const storedHash = Buffer.from(student.resetCodeHash, "hex");
+
+    if (
+      submittedHash.length !== storedHash.length ||
+      !crypto.timingSafeEqual(submittedHash, storedHash)
+    ) {
+      student.resetAttempts += 1;
+      await student.save();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          student.resetAttempts >= 5
+            ? "Too many incorrect attempts. Request a new reset code."
+            : "Invalid reset code.",
+      });
+    }
+
+    student.passwordHash = await bcrypt.hash(newPassword, 12);
+    student.resetCodeHash = undefined;
+    student.resetExpiresAt = null;
+    student.resetAttempts = 0;
+    await student.save();
+
+    return res.json({
+      success: true,
+      message: "Password updated. You can now sign in.",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to reset password right now.",
+    });
+  }
+});
+
 // Middleware to authenticate verified student
 function authenticateStudent(req, res, next) {
   try {

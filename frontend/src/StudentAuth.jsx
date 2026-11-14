@@ -41,6 +41,30 @@ export default function StudentAuth({ onLogin, onClose }) {
         setNotice(response.data.message || "Email verified. You can now sign in.");
         setPassword("");
         setCode("");
+      } else if (mode === "forgot") {
+        const response = await axios.post(
+          `${API_BASE}/api/student-auth/forgot-password`,
+          { email: email.trim().toLowerCase() }
+        );
+
+        setMode("reset");
+        setNotice(response.data.message || "Check your SRM email for the 6-digit reset code.");
+        setCode("");
+        setPassword("");
+      } else if (mode === "reset") {
+        const response = await axios.post(
+          `${API_BASE}/api/student-auth/reset-password`,
+          {
+            email: email.trim().toLowerCase(),
+            code: code.trim(),
+            newPassword: password,
+          }
+        );
+
+        setMode("login");
+        setNotice(response.data.message || "Password updated. You can now sign in.");
+        setPassword("");
+        setCode("");
       } else {
         const response = await axios.post(
           `${API_BASE}/api/student-auth/login`,
@@ -87,6 +111,10 @@ export default function StudentAuth({ onLogin, onClose }) {
             ? "Create your account"
             : mode === "verify"
             ? "Verify your email"
+            : mode === "forgot"
+            ? "Reset your password"
+            : mode === "reset"
+            ? "Enter reset code"
             : "Welcome back"}
         </h1>
 
@@ -95,6 +123,10 @@ export default function StudentAuth({ onLogin, onClose }) {
             ? "Register with your official SRM student email."
             : mode === "verify"
             ? `Enter the verification code sent to ${email}.`
+            : mode === "forgot"
+            ? "Enter your @srmist.edu.in email to receive a 6-digit reset code."
+            : mode === "reset"
+            ? `Enter the 6-digit code sent to ${email} and choose a new password.`
             : "Sign in to access your private student messages."}
         </p>
 
@@ -116,7 +148,7 @@ export default function StudentAuth({ onLogin, onClose }) {
             </label>
           )}
 
-          {mode !== "verify" && (
+          {mode !== "verify" && mode !== "reset" && (
             <label>
               SRM email
               <input
@@ -132,10 +164,10 @@ export default function StudentAuth({ onLogin, onClose }) {
             </label>
           )}
 
-          {mode === "verify" && (
+          {(mode === "verify" || mode === "reset") && (
             <>
               <label>
-                Verification code
+                {mode === "reset" ? "Reset code" : "Verification code"}
                 <input
                   value={code}
                   onChange={(event) =>
@@ -150,34 +182,61 @@ export default function StudentAuth({ onLogin, onClose }) {
                 />
               </label>
 
-              <button
-                type="button"
-                className="student-auth-text-button"
-                onClick={() => {
-                  setMode("register");
-                  setNotice("");
-                  setError("");
-                }}
-              >
-                Back to registration
-              </button>
+              {mode === "verify" && (
+                <button
+                  type="button"
+                  className="student-auth-text-button"
+                  onClick={() => {
+                    setMode("register");
+                    setNotice("");
+                    setError("");
+                  }}
+                >
+                  Back to registration
+                </button>
+              )}
             </>
           )}
 
-          {mode !== "verify" && (
+          {(mode === "login" || mode === "register" || mode === "reset") && (
             <label>
-              Password
+              {mode === "reset" ? "New password" : "Password"}
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder={mode === "register" ? "At least 10 characters" : "Your password"}
-                minLength={mode === "register" ? 10 : undefined}
+                placeholder={
+                  mode === "register" || mode === "reset"
+                    ? "At least 10 characters"
+                    : "Your password"
+                }
+                minLength={mode === "register" || mode === "reset" ? 10 : undefined}
                 maxLength={128}
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                autoComplete={
+                  mode === "register" || mode === "reset"
+                    ? "new-password"
+                    : "current-password"
+                }
                 required
               />
             </label>
+          )}
+
+          {mode === "login" && (
+            <div className="student-auth-forgot-row">
+              <button
+                type="button"
+                className="student-auth-text-button"
+                onClick={() => {
+                  setMode("forgot");
+                  setError("");
+                  setNotice("");
+                  setPassword("");
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
           )}
 
           <button className="student-auth-submit" disabled={loading} type="submit">
@@ -187,11 +246,34 @@ export default function StudentAuth({ onLogin, onClose }) {
               ? "Create account"
               : mode === "verify"
               ? "Verify email"
+              : mode === "forgot"
+              ? "Send reset code"
+              : mode === "reset"
+              ? "Reset password"
               : "Sign in"}
           </button>
         </form>
 
-        {mode !== "verify" && (
+        {(mode === "forgot" || mode === "reset") && (
+          <p className="student-auth-switch">
+            Remembered your password?{" "}
+            <button
+              type="button"
+              className="student-auth-text-button"
+              onClick={() => {
+                setMode("login");
+                setError("");
+                setNotice("");
+                setCode("");
+                setPassword("");
+              }}
+            >
+              Back to sign in
+            </button>
+          </p>
+        )}
+
+        {(mode === "login" || mode === "register") && (
           <p className="student-auth-switch">
             {mode === "login" ? "New student?" : "Already registered?"}{" "}
             <button

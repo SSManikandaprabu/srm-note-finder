@@ -41,6 +41,17 @@ verificationAttempts: { type: Number, default: 0, min: 0, max: 5 },
       select: false,
     },
 
+    resetCodeHash: {
+      type: String,
+      select: false,
+    },
+    resetAttempts: { type: Number, default: 0, min: 0, max: 5 },
+    resetExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
     status: {
       type: String,
       enum: ["active", "blocked"],

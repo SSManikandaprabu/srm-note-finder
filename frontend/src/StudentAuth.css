@@ -198,6 +198,13 @@
   text-decoration: underline;
 }
 
+.student-auth-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+  font-size: 12.5px;
+}
+
 @keyframes authFadeIn {
   from {
     opacity: 0;
