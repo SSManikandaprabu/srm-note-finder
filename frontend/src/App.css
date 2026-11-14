@@ -152,6 +152,12 @@
       background: #030508;
     }
 
+    @media print {
+      .pdf-viewer-overlay {
+        display: none !important;
+      }
+    }
+
     .navbar {
       width: min(1180px, calc(100% - 32px));
       margin: 16px auto 0;

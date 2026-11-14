@@ -83,13 +83,36 @@ const adminLoginLimiter = rateLimit({
   message: { success: false, message: "Too many login attempts. Please try again after 15 minutes." },
 });
 
-// Secure PDF downloads/viewing route
+// Helper middleware for authenticated student or admin routes
+function requireStudentOrAdminAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    const token =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : typeof req.query.token === "string"
+        ? req.query.token
+        : "";
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Sign in required to view study PDFs" });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.authUser = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ success: false, message: "Invalid or expired session. Please sign in again." });
+  }
+}
+
+// Secure PDF viewing route (requires authenticated student or admin token)
 app.use(
   "/uploads/notes",
+  requireStudentOrAdminAuth,
   express.static(path.join(__dirname, "uploads", "notes"), {
     setHeaders: (res) => {
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "private, no-store");
     },
   })
 );
@@ -1405,6 +1428,157 @@ app.delete("/api/resources/:id", requireAdminAuth, async (req, res) => {
       message: "Unable to delete resource",
       error: error.message,
     });
+  }
+});
+
+// ===============================
+// AUTHENTICATED PDF VIEWER ENDPOINTS (STUDENTS & ADMINS)
+// ===============================
+
+function resolveResourcePdfTarget(resource, query) {
+  const unit = Number(query.unit);
+  const index = Number(query.index || 0);
+  const fileId = query.fileId ? String(query.fileId) : "";
+  const kind = String(query.kind || "unit");
+
+  if (kind === "pyq") {
+    const pyqLinks = String(resource.pyq || "")
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const url = pyqLinks[index] || pyqLinks[0] || "";
+    return { title: `${resource.subject || resource.title} - PYQ ${index + 1}`, url };
+  }
+
+  if ([1, 2, 3, 4, 5].includes(unit)) {
+    const files = Array.isArray(resource[`unit${unit}Files`]) ? resource[`unit${unit}Files`] : [];
+    let matched = null;
+    if (fileId) {
+      matched = files.find((f) => String(f._id) === fileId);
+    }
+    if (!matched && files[index]) {
+      matched = files[index];
+    }
+    if (matched && matched.url) {
+      return {
+        title: matched.title || `${resource.subject || resource.title} - Unit ${unit}`,
+        url: String(matched.url).trim(),
+      };
+    }
+
+    const legacyLinks = String(resource[`unit${unit}`] || "")
+      .split(/\r?\n|,/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const legacyUrl = legacyLinks[index] || legacyLinks[0] || "";
+    return {
+      title: `${resource.subject || resource.title} - Unit ${unit}`,
+      url: legacyUrl,
+    };
+  }
+
+  return { title: resource.title || "Document", url: resource.driveUrl || resource.link || resource.url || "" };
+}
+
+function extractDriveFileId(url) {
+  const match =
+    String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+    String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+app.get("/api/resources/:id/pdf-meta", requireStudentOrAdminAuth, async (req, res) => {
+  try {
+    const resource = await Resource.findById(req.params.id).lean();
+    if (!resource) {
+      return res.status(404).json({ success: false, message: "Resource not found" });
+    }
+
+    const { title, url } = resolveResourcePdfTarget(resource, req.query);
+    if (!url) {
+      return res.status(404).json({ success: false, message: "PDF not found for this unit" });
+    }
+
+    const driveId = extractDriveFileId(url);
+    if (driveId) {
+      return res.json({
+        success: true,
+        title,
+        mode: "drive-preview",
+        embedUrl: `https://drive.google.com/file/d/${driveId}/preview`,
+      });
+    }
+
+    return res.json({
+      success: true,
+      title,
+      mode: "stream",
+    });
+  } catch (error) {
+    console.error("PDF meta error:", error);
+    return res.status(500).json({ success: false, message: "Unable to load PDF metadata" });
+  }
+});
+
+app.get("/api/resources/:id/pdf-stream", requireStudentOrAdminAuth, async (req, res) => {
+  try {
+    const resource = await Resource.findById(req.params.id).lean();
+    if (!resource) {
+      return res.status(404).json({ success: false, message: "Resource not found" });
+    }
+
+    const { url } = resolveResourcePdfTarget(resource, req.query);
+    if (!url) {
+      return res.status(404).json({ success: false, message: "PDF not found" });
+    }
+
+    // Case 1: Local uploaded PDF in /uploads/notes/
+    const uploadsMarker = "/uploads/notes/";
+    const markerIdx = url.indexOf(uploadsMarker);
+    if (markerIdx !== -1) {
+      const fileName = path.basename(url.slice(markerIdx + uploadsMarker.length).split("?")[0]);
+      const notesDir = path.resolve(__dirname, "uploads", "notes");
+      const filePath = path.resolve(notesDir, fileName);
+      if (!filePath.startsWith(notesDir) || !fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: "Uploaded PDF file not found" });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "private, no-store");
+      return fs.createReadStream(filePath).pipe(res);
+    }
+
+    // Case 2: External PDF URL (or Drive direct download fallback)
+    const driveId = extractDriveFileId(url);
+    const fetchUrl = driveId
+      ? `https://drive.google.com/uc?export=download&id=${driveId}`
+      : url;
+
+    const upstream = await fetch(fetchUrl, { redirect: "follow" });
+    if (!upstream.ok) {
+      return res.status(502).json({ success: false, message: "Unable to fetch PDF from source" });
+    }
+
+    const contentType = upstream.headers.get("content-type") || "";
+    if (!contentType.includes("pdf") && !contentType.includes("octet-stream")) {
+      return res.status(415).json({
+        success: false,
+        message: "Source did not return raw PDF bytes",
+        fallbackMode: driveId ? "drive-preview" : "external",
+      });
+    }
+
+    const arrayBuf = await upstream.arrayBuffer();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.send(Buffer.from(arrayBuf));
+  } catch (error) {
+    console.error("PDF stream error:", error);
+    return res.status(500).json({ success: false, message: "Failed to stream PDF" });
   }
 });
 

@@ -5,6 +5,7 @@ import CommunityChat from "./CommunityChat";
 import StudentAuth from "./StudentAuth";
 import StudentNotifications from "./StudentNotifications";
 import StudentPrivateMessages from "./StudentPrivateMessages";
+import PdfViewerModal from "./PdfViewerModal";
 import "./StudentStudyExperience.css";
 
 /* =========================================================
@@ -375,9 +376,11 @@ function SubjectCard({
 function ResourceCard({
   unit,
   links,
+  resourceId,
   subject,
   isBookmarked,
-  onToggleBookmark
+  onToggleBookmark,
+  onOpenPdf
 }) {
   return (
     <div className="resource-card">
@@ -405,22 +408,32 @@ function ResourceCard({
         <div className="link-list">
           {links.map((item, index) => {
             const url = typeof item === "string" ? item : item.url;
+            const fileId = typeof item === "object" ? item._id : undefined;
             const label =
               typeof item === "object" && item.title
                 ? item.title
                 : `Open Resource${links.length > 1 ? ` ${index + 1}` : ""}`;
             return (
-              <a
+              <button
+                type="button"
                 key={`${url}-${index}`}
-                href={url}
-                target="_blank"
-                rel="noreferrer"
+                onClick={() =>
+                  onOpenPdf?.({
+                    resourceId,
+                    unit,
+                    index,
+                    fileId,
+                    kind: "unit",
+                    title: `${subject} - Unit ${unit}: ${label}`,
+                  })
+                }
                 className="drive-link"
+                style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
               >
                 <span>📄</span>
                 {label}
-                <span>↗</span>
-              </a>
+                <span>👁️</span>
+              </button>
             );
           })}
         </div>
@@ -435,7 +448,7 @@ function ResourceCard({
    SMART PYQ (PREVIOUS YEAR QUESTIONS) CARD & FILTER
 ========================================================= */
 
-function PyqCard({ links, subject }) {
+function PyqCard({ links, subject, resourceId, onOpenPdf }) {
   const [selectedExamType, setSelectedExamType] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
 
@@ -529,12 +542,19 @@ function PyqCard({ links, subject }) {
         filteredLinks.length ? (
           <div className="link-list">
             {filteredLinks.map((item) => (
-              <a
+              <button
+                type="button"
                 key={`${item.url}-${item.index}`}
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
+                onClick={() =>
+                  onOpenPdf?.({
+                    resourceId,
+                    index: item.index - 1,
+                    kind: "pyq",
+                    title: `${subject} - PYQ Paper ${item.index}`,
+                  })
+                }
                 className="drive-link"
+                style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
               >
                 <span>📄</span>
                 PYQ Paper {item.index}
@@ -542,8 +562,8 @@ function PyqCard({ links, subject }) {
                 <span className="pyq-tag" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc", borderColor: "rgba(168, 85, 247, 0.3)" }}>
                   {item.year}
                 </span>
-                <span style={{ marginLeft: "auto" }}>↗</span>
-              </a>
+                <span style={{ marginLeft: "auto" }}>👁️</span>
+              </button>
             ))}
           </div>
         ) : (
@@ -695,6 +715,15 @@ export default function App() {
 
   const [showStudentAuth, setShowStudentAuth] = useState(false);
   const [showPrivateMessages, setShowPrivateMessages] = useState(false);
+  const [pdfViewerTarget, setPdfViewerTarget] = useState(null);
+
+  function handleOpenPdf(target) {
+    if (!studentToken) {
+      setShowStudentAuth(true);
+      return;
+    }
+    setPdfViewerTarget(target);
+  }
 
   // Student Study Experience State (Bookmarks)
   const [bookmarks, setBookmarks] = useState(() => {
@@ -1847,9 +1876,11 @@ export default function App() {
                   <ResourceCard
                     key={unit}
                     unit={unit}
+                    resourceId={resource?._id || ""}
                     subject={selectedSubject}
                     links={unitFiles}
                     isBookmarked={isUnitBookmarked}
+                    onOpenPdf={handleOpenPdf}
                     onToggleBookmark={() =>
                       handleToggleBookmark({
                         resourceId: resource?._id || "",
@@ -1866,10 +1897,12 @@ export default function App() {
             )}
 
             <PyqCard
+              resourceId={resource?._id || ""}
               links={normalizeLinks(
                 resource?.pyq
               )}
               subject={selectedSubject}
+              onOpenPdf={handleOpenPdf}
             />
           </div>
         )}
@@ -3723,6 +3756,19 @@ export default function App() {
           onConfirm={
             confirmDeleteResource
           }
+        />
+      )}
+
+      {pdfViewerTarget && (
+        <PdfViewerModal
+          apiBase={API_BASE}
+          studentToken={studentToken}
+          target={pdfViewerTarget}
+          onRequireLogin={() => {
+            setPdfViewerTarget(null);
+            setShowStudentAuth(true);
+          }}
+          onClose={() => setPdfViewerTarget(null)}
         />
       )}
 
