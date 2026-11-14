@@ -196,6 +196,25 @@ export default function PdfViewerModal({
     setCurrentPage(closest);
   }
 
+  useEffect(() => {
+    if (!target) return;
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        onClose?.();
+      } else if (e.key === "ArrowLeft" && mode === "stream" && numPages > 0) {
+        scrollToPage(currentPage - 1);
+      } else if (e.key === "ArrowRight" && mode === "stream" && numPages > 0) {
+        scrollToPage(currentPage + 1);
+      } else if ((e.key === "+" || e.key === "=") && mode === "stream") {
+        setScale((s) => Math.min(2.5, Number((s + 0.15).toFixed(2))));
+      } else if (e.key === "-" && mode === "stream") {
+        setScale((s) => Math.max(0.6, Number((s - 0.15).toFixed(2))));
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [target, mode, numPages, currentPage, onClose]);
+
   if (!target) return null;
 
   return (

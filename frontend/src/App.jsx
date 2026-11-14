@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import UserTracker from "./UserTracker";
 import CommunityChat from "./CommunityChat";
 import StudentAuth from "./StudentAuth";
 import StudentNotifications from "./StudentNotifications";
 import StudentPrivateMessages from "./StudentPrivateMessages";
-import PdfViewerModal from "./PdfViewerModal";
 import "./StudentStudyExperience.css";
+
+const PdfViewerModal = lazy(() => import("./PdfViewerModal"));
 
 /* =========================================================
    API
@@ -389,7 +390,24 @@ function ResourceCard({
           <div className="resource-icon">📖</div>
           <div>
             <span>STUDY MATERIAL</span>
-            <h3>Unit {unit}</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <h3>Unit {unit}</h3>
+              {links.length > 0 && (
+                <span
+                  style={{
+                    fontSize: "10.5px",
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: "999px",
+                    background: "rgba(34, 211, 238, 0.14)",
+                    color: "var(--accent-primary)",
+                    border: "1px solid rgba(34, 211, 238, 0.25)",
+                  }}
+                >
+                  {links.length} {links.length === 1 ? "PDF" : "PDFs"}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -696,14 +714,29 @@ export default function App() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [customizerOpen]);
 
-  const [theme, setTheme] =
-    useState("aurora-cyan");
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("srm-student-theme") || "aurora-cyan"
+  );
 
-  const [background, setBackground] =
-    useState("aurora");
+  const [background, setBackground] = useState(
+    () => localStorage.getItem("srm-student-background") || "aurora"
+  );
 
-  const [glowIntensity, setGlowIntensity] =
-    useState("high");
+  const [glowIntensity, setGlowIntensity] = useState(
+    () => localStorage.getItem("srm-student-glow") || "high"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("srm-student-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("srm-student-background", background);
+  }, [background]);
+
+  useEffect(() => {
+    localStorage.setItem("srm-student-glow", glowIntensity);
+  }, [glowIntensity]);
 
   const [studentToken, setStudentToken] = useState(
     () => localStorage.getItem("srm-student-token") || ""
@@ -797,13 +830,13 @@ export default function App() {
         const res = await axios.get(`${API_BASE}/api/settings`);
         if (res.data?.settings) {
           const s = res.data.settings;
-          if (s.theme) {
+          if (s.theme && !localStorage.getItem("srm-student-theme")) {
             setTheme(s.theme);
           }
-          if (s.backgroundStyle) {
+          if (s.backgroundStyle && !localStorage.getItem("srm-student-background")) {
             setBackground(s.backgroundStyle);
           }
-          if (s.glowIntensity) {
+          if (s.glowIntensity && !localStorage.getItem("srm-student-glow")) {
             setGlowIntensity(s.glowIntensity);
           }
         }
@@ -3764,16 +3797,18 @@ export default function App() {
       )}
 
       {pdfViewerTarget && (
-        <PdfViewerModal
-          apiBase={API_BASE}
-          studentToken={studentToken}
-          target={pdfViewerTarget}
-          onRequireLogin={() => {
-            setPdfViewerTarget(null);
-            setShowStudentAuth(true);
-          }}
-          onClose={() => setPdfViewerTarget(null)}
-        />
+        <Suspense fallback={null}>
+          <PdfViewerModal
+            apiBase={API_BASE}
+            studentToken={studentToken}
+            target={pdfViewerTarget}
+            onRequireLogin={() => {
+              setPdfViewerTarget(null);
+              setShowStudentAuth(true);
+            }}
+            onClose={() => setPdfViewerTarget(null)}
+          />
+        </Suspense>
       )}
 
       {/* =====================================================

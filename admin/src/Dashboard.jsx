@@ -275,7 +275,16 @@ export default function Dashboard({ username, onLogout }) {
   const [checkingLinks, setCheckingLinks] = useState(false);
   const [linkCheckStats, setLinkCheckStats] = useState(null);
   const [search, setSearch] = useState("");
+  const [semesterFilter, setSemesterFilter] = useState("all");
+  const [toast, setToast] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
+
+  function showToast(message, type = "success") {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 3500);
+  }
 
   const [form, setForm] = useState({
     title: "",
@@ -586,14 +595,14 @@ export default function Dashboard({ username, onLogout }) {
           payload,
           authHeaders
         );
-        alert("Resource updated successfully.");
+        showToast("Resource updated successfully.");
       } else {
         await axios.post(
           API_BASE + "/api/resources",
           payload,
           authHeaders
         );
-        alert("Resource added successfully.");
+        showToast("Resource added successfully.");
       }
 
       resetForm();
@@ -607,14 +616,15 @@ export default function Dashboard({ username, onLogout }) {
         error.response?.status === 401 ||
         error.response?.status === 403
       ) {
-        alert("Admin authorization failed.");
+        showToast("Admin authorization failed.", "error");
         handleLogout();
         return;
       }
 
-      alert(
+      showToast(
         error.response?.data?.message ||
-          "Unable to save resource."
+          "Unable to save resource.",
+        "error"
       );
     }
   }
@@ -758,11 +768,16 @@ export default function Dashboard({ username, onLogout }) {
   const filteredResources = useMemo(() => {
     const query = search.toLowerCase().trim();
 
-    if (!query) {
-      return resources;
-    }
-
     return resources.filter((resource) => {
+      if (
+        semesterFilter !== "all" &&
+        String(resource.semester || "") !== semesterFilter
+      ) {
+        return false;
+      }
+
+      if (!query) return true;
+
       return (
         String(resource.title || "")
           .toLowerCase()
@@ -775,7 +790,7 @@ export default function Dashboard({ username, onLogout }) {
           .includes(query)
       );
     });
-  }, [resources, search]);
+  }, [resources, search, semesterFilter]);
 
   const totalResources = resources.length;
   const totalSubjects = subjects.length;
@@ -1176,7 +1191,7 @@ export default function Dashboard({ username, onLogout }) {
           </div>
         </div>
 
-        <div className="resource-toolbar">
+        <div className="resource-toolbar" style={{ gap: "10px", flexWrap: "wrap" }}>
 
           <input
             className="resource-search"
@@ -1186,6 +1201,27 @@ export default function Dashboard({ username, onLogout }) {
             }
             placeholder="Search resources or subjects..."
           />
+
+          <select
+            value={semesterFilter}
+            onChange={(e) => setSemesterFilter(e.target.value)}
+            style={{
+              padding: "10px 12px",
+              borderRadius: "10px",
+              border: "1px solid rgba(255, 255, 255, 0.14)",
+              background: "rgba(15, 23, 42, 0.85)",
+              color: "#f8fafc",
+              fontSize: "13px",
+              cursor: "pointer",
+            }}
+          >
+            <option value="all">All Semesters</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+              <option key={sem} value={String(sem)}>
+                Semester {sem}
+              </option>
+            ))}
+          </select>
 
           <span>
             {filteredResources.length} resources
@@ -2525,6 +2561,31 @@ export default function Dashboard({ username, onLogout }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            zIndex: 2000,
+            padding: "12px 18px",
+            borderRadius: "12px",
+            background:
+              toast.type === "error"
+                ? "rgba(239, 68, 68, 0.92)"
+                : "rgba(16, 185, 129, 0.92)",
+            color: "#ffffff",
+            fontWeight: "600",
+            fontSize: "13px",
+            boxShadow: "0 12px 30px rgba(0, 0, 0, 0.45)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          {toast.type === "error" ? "⚠️ " : "✓ "}
+          {toast.message}
         </div>
       )}
 
