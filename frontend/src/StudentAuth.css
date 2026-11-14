@@ -27,6 +27,30 @@
   box-shadow: 0 25px 90px rgba(0, 0, 0, 0.55),
     0 0 45px rgba(34, 211, 238, 0.09);
   animation: authSlideUp 0.35s ease;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.student-auth-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.student-auth-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.student-auth-card::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+.student-auth-card input:-webkit-autofill,
+.student-auth-card input:-webkit-autofill:hover,
+.student-auth-card input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .student-auth-close {
