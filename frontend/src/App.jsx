@@ -719,16 +719,6 @@ export default function App() {
   const [pendingPdfTarget, setPendingPdfTarget] = useState(null);
 
   function handleOpenPdf(target) {
-    const activeToken =
-      studentToken || localStorage.getItem("srm-student-token") || "";
-    if (!activeToken) {
-      setPendingPdfTarget(target);
-      setShowStudentAuth(true);
-      return;
-    }
-    if (!studentToken) {
-      setStudentToken(activeToken);
-    }
     setPdfViewerTarget(target);
   }
 

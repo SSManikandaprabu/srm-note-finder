@@ -42,12 +42,9 @@ export default function PdfViewerModal({
 
       const activeToken =
         studentToken || localStorage.getItem("srm-student-token") || "";
-
-      if (!activeToken) {
-        setLoading(false);
-        setError("Please sign in to view this PDF.");
-        return;
-      }
+      const authHeaders = activeToken
+        ? { Authorization: `Bearer ${activeToken}` }
+        : {};
 
       const params = new URLSearchParams();
       if (target.unit) params.set("unit", String(target.unit));
@@ -59,19 +56,9 @@ export default function PdfViewerModal({
         const metaRes = await fetch(
           `${apiBase}/api/resources/${target.resourceId}/pdf-meta?${params.toString()}`,
           {
-            headers: {
-              Authorization: `Bearer ${activeToken}`,
-            },
+            headers: authHeaders,
           }
         );
-
-        if (metaRes.status === 401 || metaRes.status === 403) {
-          if (!cancelled) {
-            setError("Your session has expired. Please sign in again to view PDFs.");
-            setLoading(false);
-          }
-          return;
-        }
 
         const metaData = await metaRes.json();
         if (!metaRes.ok || !metaData.success) {
@@ -92,9 +79,7 @@ export default function PdfViewerModal({
         const streamRes = await fetch(
           `${apiBase}/api/resources/${target.resourceId}/pdf-stream?${params.toString()}`,
           {
-            headers: {
-              Authorization: `Bearer ${activeToken}`,
-            },
+            headers: authHeaders,
           }
         );
 

@@ -1487,7 +1487,7 @@ function extractDriveFileId(url) {
   return match ? match[1] : null;
 }
 
-app.get("/api/resources/:id/pdf-meta", requireStudentOrAdminAuth, async (req, res) => {
+app.get("/api/resources/:id/pdf-meta", async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id).lean();
     if (!resource) {
@@ -1520,7 +1520,7 @@ app.get("/api/resources/:id/pdf-meta", requireStudentOrAdminAuth, async (req, re
   }
 });
 
-app.get("/api/resources/:id/pdf-stream", requireStudentOrAdminAuth, async (req, res) => {
+app.get("/api/resources/:id/pdf-stream", async (req, res) => {
   try {
     const resource = await Resource.findById(req.params.id).lean();
     if (!resource) {
